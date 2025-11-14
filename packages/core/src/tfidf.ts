@@ -24,7 +24,7 @@ export interface SearchIndex {
  * Simple code-aware tokenizer
  * Extracts identifiers, keywords, and meaningful terms from code
  */
-function tokenize(text: string): string[] {
+export function tokenize(text: string): string[] {
   // Common code keywords to boost
   const keywords = new Set([
     'function', 'const', 'let', 'var', 'class', 'interface', 'type',
