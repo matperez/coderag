@@ -14,6 +14,7 @@ import {
   type ScanResult,
 } from './utils.js';
 import { MemoryStorage, type CodebaseFile, type Storage } from './storage.js';
+import { PersistentStorage } from './storage-persistent.js';
 import { buildSearchIndex, type SearchIndex } from './tfidf.js';
 
 export interface IndexerOptions {
@@ -130,8 +131,16 @@ export class CodebaseIndexer {
       }));
 
       this.searchIndex = buildSearchIndex(documents);
-      this.status.progress = 100;
+      this.status.progress = 75;
 
+      // Persist TF-IDF vectors if using persistent storage
+      if (this.storage instanceof PersistentStorage) {
+        console.error('[INFO] Persisting TF-IDF vectors...');
+        await this.persistSearchIndex();
+        console.error('[SUCCESS] TF-IDF vectors persisted');
+      }
+
+      this.status.progress = 100;
       console.error(`[SUCCESS] Indexed ${scannedFiles.length} files`);
 
       // Start watching if requested
@@ -303,6 +312,56 @@ export class CodebaseIndexer {
     }));
 
     this.searchIndex = buildSearchIndex(documents);
+
+    // Persist if using persistent storage
+    if (this.storage instanceof PersistentStorage) {
+      await this.persistSearchIndex();
+    }
+  }
+
+  /**
+   * Persist search index to storage
+   */
+  private async persistSearchIndex(): Promise<void> {
+    if (!this.searchIndex || !(this.storage instanceof PersistentStorage)) {
+      return;
+    }
+
+    // Store IDF scores
+    const docFreq = new Map<string, number>();
+    for (const doc of this.searchIndex.documents) {
+      const uniqueTerms = new Set(doc.rawTerms.keys());
+      for (const term of uniqueTerms) {
+        docFreq.set(term, (docFreq.get(term) || 0) + 1);
+      }
+    }
+    await this.storage.storeIdfScores(this.searchIndex.idf, docFreq);
+
+    // Store document vectors for each file
+    for (const doc of this.searchIndex.documents) {
+      // Extract file path from URI (remove 'file://' prefix)
+      const filePath = doc.uri.replace(/^file:\/\//, '');
+
+      // Calculate TF for each term
+      const totalTerms = Array.from(doc.rawTerms.values()).reduce(
+        (sum, freq) => sum + freq,
+        0
+      );
+
+      // Build terms map with tf, tfidf, and rawFreq
+      const terms = new Map<string, { tf: number; tfidf: number; rawFreq: number }>();
+      for (const [term, tfidfScore] of doc.terms.entries()) {
+        const rawFreq = doc.rawTerms.get(term) || 0;
+        const tf = rawFreq / totalTerms;
+        terms.set(term, {
+          tf,
+          tfidf: tfidfScore,
+          rawFreq,
+        });
+      }
+
+      await this.storage.storeDocumentVectors(filePath, terms);
+    }
   }
 
   /**
