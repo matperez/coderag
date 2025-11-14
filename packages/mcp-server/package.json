@@ -1,11 +1,11 @@
 {
-  "name": "@sylphx/codebase-search-mcp",
+  "name": "@sylphx/coderag-mcp",
   "version": "0.1.0",
-  "description": "MCP server for codebase search - Model Context Protocol integration",
+  "description": "MCP server for CodeRAG - Model Context Protocol integration for RAG",
   "type": "module",
   "main": "./dist/index.js",
   "bin": {
-    "codebase-search-mcp": "./dist/index.js"
+    "coderag-mcp": "./dist/index.js"
   },
   "files": [
     "dist",
@@ -19,7 +19,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@sylphx/codebase-search": "workspace:*",
+    "@sylphx/coderag": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.20.2",
     "zod": "^4.1.12"
   },
@@ -31,15 +31,17 @@
   "keywords": [
     "mcp",
     "model-context-protocol",
-    "codebase-search",
+    "rag",
+    "retrieval-augmented-generation",
     "code-search",
-    "tfidf"
+    "ai-assistant",
+    "coderag"
   ],
   "author": "SylphxAI",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/SylphxAI/codebase-search.git",
+    "url": "https://github.com/SylphxAI/coderag.git",
     "directory": "packages/mcp-server"
   }
 }

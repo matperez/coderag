@@ -2,16 +2,16 @@
 layout: home
 
 hero:
-  name: "Codebase Search"
+  name: "CodeRAG"
   text: "Intelligent Code Search"
-  tagline: Hybrid TF-IDF and vector search for blazing-fast, semantically-aware codebase exploration
+  tagline: Lightning-fast hybrid search (TF-IDF + Vector) - RAG-ready for AI assistants
   actions:
     - theme: brand
       text: Get Started
       link: /guide/getting-started
     - theme: alt
       text: View on GitHub
-      link: https://github.com/sylphlab/codebase-search
+      link: https://github.com/sylphlab/coderag
 
 features:
   - icon: ⚡
@@ -42,7 +42,7 @@ features:
 ## Quick Example
 
 ```typescript
-import { CodebaseIndexer } from '@sylphx/codebase-search';
+import { CodebaseIndexer } from '@sylphx/coderag';
 
 // Initialize indexer
 const indexer = new CodebaseIndexer({
@@ -66,7 +66,7 @@ const keywordResults = await indexer.keywordSearch('getUserData');
 const semanticResults = await indexer.semanticSearch('database connection pool');
 ```
 
-## Why Codebase Search?
+## Why CodeRAG?
 
 ### Performance First
 
@@ -91,7 +91,7 @@ Built with performance in mind from day one:
 
 ## Performance Benchmarks
 
-| Operation | Codebase Search | Traditional | Improvement |
+| Operation | CodeRAG | Traditional | Improvement |
 |-----------|----------------|-------------|-------------|
 | Initial Indexing | 13.4s | 36.2s | **2.7x faster** |
 | Incremental Update | 2.6s | 431.2s | **166x faster** |
@@ -103,10 +103,10 @@ Built with performance in mind from day one:
 
 <div class="tip custom-block" style="padding-top: 8px">
 
-Ready to supercharge your codebase search?
+Ready to supercharge your code search with RAG?
 
 ```bash
-bun add @sylphx/codebase-search
+bun add @sylphx/coderag
 ```
 
 </div>

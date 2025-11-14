@@ -1,8 +1,8 @@
 {
-  "name": "codebase-search",
+  "name": "coderag",
   "version": "0.1.0",
   "private": true,
-  "description": "Intelligent codebase search with TF-IDF - Core library and MCP server",
+  "description": "Lightning-fast hybrid code search (TF-IDF + Vector) - RAG-ready for AI assistants",
   "workspaces": [
     "packages/*"
   ],
@@ -39,17 +39,21 @@
     "node": ">=18.0.0"
   },
   "keywords": [
-    "codebase-search",
+    "rag",
+    "code-search",
+    "retrieval-augmented-generation",
+    "vector-search",
+    "embeddings",
     "tfidf",
-    "search",
-    "indexing",
+    "hybrid-search",
     "mcp",
-    "model-context-protocol"
+    "model-context-protocol",
+    "codebase-indexing"
   ],
   "author": "SylphxAI",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/SylphxAI/codebase-search.git"
+    "url": "https://github.com/SylphxAI/coderag.git"
   }
 }

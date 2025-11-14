@@ -1,11 +1,11 @@
 # Quick Start
 
-Get started with Codebase Search in 5 minutes.
+Get started with CodeRAG in 5 minutes.
 
 ## 1. Install
 
 ```bash
-bun add @sylphx/codebase-search
+bun add @sylphx/coderag
 ```
 
 ## 2. Set Up Environment
@@ -20,11 +20,11 @@ OPENAI_API_KEY=sk-...
 
 ```typescript
 // index.ts
-import { CodebaseIndexer } from '@sylphx/codebase-search';
+import { CodebaseIndexer } from '@sylphx/coderag';
 
 const indexer = new CodebaseIndexer({
   codebaseRoot: '/path/to/your/project',
-  indexPath: '.codebase-search'
+  indexPath: '.coderag'
 });
 
 // Index your codebase
@@ -43,11 +43,11 @@ bun run index.ts
 
 ```typescript
 // search.ts
-import { CodebaseIndexer } from '@sylphx/codebase-search';
+import { CodebaseIndexer } from '@sylphx/coderag';
 
 const indexer = new CodebaseIndexer({
   codebaseRoot: '/path/to/your/project',
-  indexPath: '.codebase-search'
+  indexPath: '.coderag'
 });
 
 // Hybrid search (keyword + semantic)
@@ -130,11 +130,11 @@ interface SearchOptions {
 ## Example: Full-Featured Search
 
 ```typescript
-import { CodebaseIndexer } from '@sylphx/codebase-search';
+import { CodebaseIndexer } from '@sylphx/coderag';
 
 const indexer = new CodebaseIndexer({
   codebaseRoot: process.cwd(),
-  indexPath: '.codebase-search'
+  indexPath: '.coderag'
 });
 
 // Build index

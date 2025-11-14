@@ -1,8 +1,8 @@
 import { defineConfig } from 'vitepress';
 
 export default defineConfig({
-  title: 'Codebase Search',
-  description: 'Intelligent codebase search with hybrid TF-IDF and vector search',
+  title: 'CodeRAG',
+  description: 'Lightning-fast hybrid code search (TF-IDF + Vector) - RAG-ready for AI assistants',
   base: '/',
 
   themeConfig: {
@@ -12,7 +12,7 @@ export default defineConfig({
       { text: 'Guide', link: '/guide/getting-started' },
       { text: 'API', link: '/api/core' },
       { text: 'MCP Server', link: '/mcp/overview' },
-      { text: 'GitHub', link: 'https://github.com/sylphlab/codebase-search' }
+      { text: 'GitHub', link: 'https://github.com/sylphlab/coderag' }
     ],
 
     sidebar: {
@@ -68,7 +68,7 @@ export default defineConfig({
     },
 
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/sylphlab/codebase-search' }
+      { icon: 'github', link: 'https://github.com/sylphlab/coderag' }
     ],
 
     footer: {

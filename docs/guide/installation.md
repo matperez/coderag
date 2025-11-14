@@ -10,35 +10,35 @@
 ::: code-group
 
 ```bash [bun]
-bun add @sylphx/codebase-search
+bun add @sylphx/coderag
 ```
 
 ```bash [npm]
-npm install @sylphx/codebase-search
+npm install @sylphx/coderag
 ```
 
 ```bash [pnpm]
-pnpm add @sylphx/codebase-search
+pnpm add @sylphx/coderag
 ```
 
 ```bash [yarn]
-yarn add @sylphx/codebase-search
+yarn add @sylphx/coderag
 ```
 
 :::
 
 ## Install MCP Server (Optional)
 
-For AI assistant integration:
+For AI assistant RAG integration:
 
 ::: code-group
 
 ```bash [bun]
-bun add @sylphx/codebase-search-mcp
+bun add @sylphx/coderag-mcp
 ```
 
 ```bash [npm]
-npm install @sylphx/codebase-search-mcp
+npm install @sylphx/coderag-mcp
 ```
 
 :::
@@ -101,14 +101,14 @@ Create a test file:
 
 ```typescript
 // test-search.ts
-import { CodebaseIndexer } from '@sylphx/codebase-search';
+import { CodebaseIndexer } from '@sylphx/coderag';
 
 const indexer = new CodebaseIndexer({
   codebaseRoot: process.cwd(),
-  indexPath: '.codebase-search'
+  indexPath: '.coderag'
 });
 
-console.log('✅ Codebase Search installed successfully!');
+console.log('✅ CodeRAG installed successfully!');
 ```
 
 Run it:

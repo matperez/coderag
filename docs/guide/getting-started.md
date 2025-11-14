@@ -1,8 +1,8 @@
 # Getting Started
 
-## What is Codebase Search?
+## What is CodeRAG?
 
-Codebase Search is an intelligent code search library that combines the precision of TF-IDF keyword search with the semantic understanding of vector embeddings. It's designed to be fast, extensible, and easy to integrate into your development workflow.
+CodeRAG is a lightning-fast hybrid code search library that combines TF-IDF keyword search with vector embeddings for semantic understanding. Built for RAG (Retrieval-Augmented Generation), it's perfect for AI assistants, documentation search, and IDE integration.
 
 ## Key Features
 

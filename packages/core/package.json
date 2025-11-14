@@ -1,7 +1,7 @@
 {
-  "name": "@sylphx/codebase-search",
+  "name": "@sylphx/coderag",
   "version": "0.1.0",
-  "description": "Core library for intelligent codebase search using TF-IDF",
+  "description": "Lightning-fast hybrid code search (TF-IDF + Vector) - RAG-ready for AI assistants",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -60,17 +60,22 @@
     "vitest": "^4.0.6"
   },
   "keywords": [
-    "codebase-search",
+    "rag",
+    "code-search",
+    "retrieval-augmented-generation",
+    "vector-search",
+    "embeddings",
     "tfidf",
-    "search",
-    "indexing",
-    "code-analysis"
+    "hybrid-search",
+    "semantic-search",
+    "code-indexing",
+    "mcp"
   ],
   "author": "SylphxAI",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/SylphxAI/codebase-search.git",
+    "url": "https://github.com/SylphxAI/coderag.git",
     "directory": "packages/core"
   }
 }
