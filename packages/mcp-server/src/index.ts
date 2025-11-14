@@ -6,7 +6,7 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { CodebaseIndexer } from '@sylphx/codebase-search';
+import { CodebaseIndexer, PersistentStorage } from '@sylphx/codebase-search';
 import { registerCodebaseSearchTool } from './tool.js';
 
 // Logger utility (stderr for MCP)
@@ -53,10 +53,15 @@ async function main() {
   Logger.info(`📏 Max file size: ${(maxFileSize / 1024 / 1024).toFixed(2)} MB`);
   Logger.info(`🔄 Auto-index: ${autoIndex ? 'enabled' : 'disabled'}`);
 
+  // Create persistent storage
+  const storage = new PersistentStorage({ codebaseRoot });
+  Logger.info('💾 Using persistent storage (SQLite)');
+
   // Create indexer
   const indexer = new CodebaseIndexer({
     codebaseRoot,
     maxFileSize,
+    storage,
   });
 
   // Register codebase search tool

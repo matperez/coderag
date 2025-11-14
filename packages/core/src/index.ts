@@ -20,6 +20,7 @@ export {
   type DocumentVector,
 } from './tfidf.js';
 export { MemoryStorage, type CodebaseFile } from './storage.js';
+export { PersistentStorage } from './storage-persistent.js';
 export {
   loadGitignore,
   scanFiles,

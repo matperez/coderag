@@ -13,12 +13,13 @@ import {
   detectLanguage,
   type ScanResult,
 } from './utils.js';
-import { MemoryStorage, type CodebaseFile } from './storage.js';
+import { MemoryStorage, type CodebaseFile, type Storage } from './storage.js';
 import { buildSearchIndex, type SearchIndex } from './tfidf.js';
 
 export interface IndexerOptions {
   codebaseRoot?: string;
   maxFileSize?: number;
+  storage?: Storage;
   onProgress?: (current: number, total: number, file: string) => void;
   watch?: boolean;
   onFileChange?: (event: FileChangeEvent) => void;
@@ -41,7 +42,7 @@ export interface IndexingStatus {
 export class CodebaseIndexer {
   private codebaseRoot: string;
   private maxFileSize: number;
-  private storage: MemoryStorage;
+  private storage: Storage;
   private searchIndex: SearchIndex | null = null;
   private watcher: any = null;
   private isWatching = false;
@@ -58,7 +59,7 @@ export class CodebaseIndexer {
   constructor(options: IndexerOptions = {}) {
     this.codebaseRoot = options.codebaseRoot || process.cwd();
     this.maxFileSize = options.maxFileSize || 1048576; // 1MB
-    this.storage = new MemoryStorage();
+    this.storage = options.storage || new MemoryStorage();
     this.onFileChangeCallback = options.onFileChange;
   }
 

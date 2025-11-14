@@ -11,7 +11,17 @@ export interface CodebaseFile {
   hash: string;
 }
 
-export class MemoryStorage {
+export interface Storage {
+  storeFile(file: CodebaseFile): Promise<void>;
+  getFile(path: string): Promise<CodebaseFile | null>;
+  getAllFiles(): Promise<CodebaseFile[]>;
+  deleteFile(path: string): Promise<void>;
+  clear(): Promise<void>;
+  count(): Promise<number>;
+  exists(path: string): Promise<boolean>;
+}
+
+export class MemoryStorage implements Storage {
   private files: Map<string, CodebaseFile> = new Map();
 
   /**
