@@ -3,7 +3,13 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { tokenize, buildSearchIndex, searchDocuments, calculateCosineSimilarity } from './tfidf.js';
+import {
+  tokenize,
+  buildSearchIndex,
+  searchDocuments,
+  calculateCosineSimilarity,
+  type DocumentVector,
+} from './tfidf.js';
 
 describe('TF-IDF', () => {
   describe('tokenize', () => {
