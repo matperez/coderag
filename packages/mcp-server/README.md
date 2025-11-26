@@ -224,8 +224,8 @@ Check:
 
 ```bash
 # Clone repo
-git clone https://github.com/SylphxAI/codebase-search.git
-cd codebase-search
+git clone https://github.com/SylphxAI/coderag.git
+cd coderag
 
 # Install dependencies
 bun install

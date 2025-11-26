@@ -64,4 +64,4 @@
 ### Patch Changes
 
 - Updated dependencies [c67a1ff]
-  - @sylphx/codebase-search@0.2.0
+  - @sylphx/coderag@0.2.0

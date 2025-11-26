@@ -4,7 +4,7 @@
 
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import type { CodebaseIndexer } from '@sylphx/codebase-search';
+import type { CodebaseIndexer } from '@sylphx/coderag';
 
 /**
  * Register codebase search tool
