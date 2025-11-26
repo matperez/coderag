@@ -64,3 +64,9 @@ export {
   type HybridSearchOptions,
   type HybridSearchResult,
 } from './hybrid-search.js';
+export {
+  chunkCodeByAST,
+  chunkCodeByASTSimple,
+  type ASTChunkOptions,
+  type ChunkResult,
+} from './ast-chunking.js';
