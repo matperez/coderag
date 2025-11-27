@@ -127,6 +127,6 @@ MIT
 
 **Powered by [Sylphx](https://github.com/SylphxAI)**
 
-Built with [@sylphx/synth](https://github.com/SylphxAI/synth) · [@sylphx/mcp-server-sdk](https://github.com/SylphxAI/mcp-server-sdk) · [@sylphx/doctor](https://github.com/SylphxAI/doctor)
+Built with [@sylphx/synth](https://github.com/SylphxAI/synth) · [@sylphx/mcp-server-sdk](https://github.com/SylphxAI/mcp-server-sdk) · [@sylphx/doctor](https://github.com/SylphxAI/doctor) · [@sylphx/biome-config](https://github.com/SylphxAI/biome-config) · [@sylphx/bump](https://github.com/SylphxAI/bump)
 
 </div>

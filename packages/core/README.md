@@ -147,4 +147,4 @@ MIT
 
 **Powered by [Sylphx](https://github.com/SylphxAI)**
 
-Built with [@sylphx/synth](https://github.com/SylphxAI/synth)
+Built with [@sylphx/synth](https://github.com/SylphxAI/synth) · [@sylphx/synth-js](https://github.com/SylphxAI/synth-js) · [@sylphx/synth-html](https://github.com/SylphxAI/synth-html) · [@sylphx/synth-json](https://github.com/SylphxAI/synth-json) · [@sylphx/synth-yaml](https://github.com/SylphxAI/synth-yaml) · [@sylphx/synth-md](https://github.com/SylphxAI/synth-md)
