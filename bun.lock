@@ -8,7 +8,7 @@
         "@biomejs/biome": "^2.3.8",
         "@sylphx/biome-config": "^0.1.0",
         "@sylphx/bump": "^0.6.2",
-        "@sylphx/doctor": "^1.21.4",
+        "@sylphx/doctor": "^1.22.0",
         "lefthook": "^2.0.4",
         "turbo": "^2.6.0",
         "typescript": "^5.9.3",
@@ -345,7 +345,7 @@
 
     "@sylphx/coderag-mcp": ["@sylphx/coderag-mcp@workspace:packages/mcp-server"],
 
-    "@sylphx/doctor": ["@sylphx/doctor@1.21.4", "", { "dependencies": { "citty": "^0.1.6", "consola": "^3.4.2", "defu": "^6.1.4", "jiti": "^2.4.2", "picocolors": "^1.1.1" }, "bin": { "doctor": "dist/cli.js" } }, "sha512-CkLX70Cnxz3IJPPtQlBpoT1cjvJ1sUAAiFPq/U76eg9Lfu0A9JjXLb/nuGSbNaj97xDIlQp7xqbNwY1R8uVJIw=="],
+    "@sylphx/doctor": ["@sylphx/doctor@1.22.0", "", { "dependencies": { "citty": "^0.1.6", "consola": "^3.4.2", "defu": "^6.1.4", "jiti": "^2.4.2", "picocolors": "^1.1.1" }, "bin": { "doctor": "dist/cli.js" } }, "sha512-bLH5mbTpPR0kxlaIgEE8SHjSHvfCbS5yAAra9PrIV/bPZQcCnw5A+WlXVQPr0oX/OSWoaAREi13V3emgLya3pg=="],
 
     "@sylphx/mcp-server-sdk": ["@sylphx/mcp-server-sdk@0.2.0", "", { "peerDependencies": { "typescript": "^5.0.0", "zod": "^4.0.0" }, "optionalPeers": ["zod"] }, "sha512-2tXLfCc7s3F5rQPJt1sRvex9fZI8lmwdvCUBDiihNfJ1bukoLau2sjV3U5itj6T8DTeGoRKAoETbdOLgYhrawg=="],
 
