@@ -5,7 +5,13 @@
  * MCP server providing intelligent codebase search
  */
 
-import { CodebaseIndexer, PersistentStorage } from '@sylphx/coderag'
+import {
+	CodebaseIndexer,
+	PersistentStorage,
+	createEmbeddingProvider,
+	semanticSearch,
+	type EmbeddingProvider,
+} from '@sylphx/coderag'
 import { createServer, stdio, text, tool } from '@sylphx/mcp-server-sdk'
 import { z } from 'zod'
 
@@ -24,7 +30,6 @@ const Logger = {
 const SERVER_CONFIG = {
 	name: '@sylphx/coderag-mcp',
 	version: '1.0.0',
-	description: 'MCP server providing intelligent codebase search using TF-IDF',
 }
 
 /**
@@ -32,7 +37,6 @@ const SERVER_CONFIG = {
  */
 async function main() {
 	Logger.info('🚀 Starting MCP Codebase Search Server...')
-	Logger.info(`📋 ${SERVER_CONFIG.description}`)
 
 	// Parse command line arguments
 	const args = process.argv.slice(2)
@@ -47,6 +51,28 @@ async function main() {
 	Logger.info(`📏 Max file size: ${(maxFileSize / 1024 / 1024).toFixed(2)} MB`)
 	Logger.info(`🔄 Auto-index: ${autoIndex ? 'enabled' : 'disabled'}`)
 
+	// Check for embedding provider (OpenAI API key)
+	let embeddingProvider: EmbeddingProvider | undefined
+	const openaiApiKey = process.env.OPENAI_API_KEY
+
+	if (openaiApiKey) {
+		try {
+			embeddingProvider = await createEmbeddingProvider({
+				provider: 'openai',
+				model: 'text-embedding-3-small',
+				dimensions: 1536,
+			})
+			Logger.info('🧠 Semantic search enabled (OpenAI embeddings)')
+		} catch (error) {
+			Logger.error('Failed to initialize embedding provider', error)
+			Logger.info('⚠️ Falling back to keyword search')
+		}
+	} else {
+		Logger.info('🔤 Keyword search mode (no OPENAI_API_KEY)')
+	}
+
+	const isSemanticSearch = !!embeddingProvider
+
 	// Create persistent storage
 	const storage = new PersistentStorage({ codebaseRoot })
 	Logger.info('💾 Using persistent storage (SQLite)')
@@ -56,35 +82,46 @@ async function main() {
 		codebaseRoot,
 		maxFileSize,
 		storage,
+		embeddingProvider,
 	})
 
-	// Define codebase search tool using builder pattern
-	const codebaseSearch = tool()
-		.description(`Search project source files, documentation, and code. Use this to find implementations, functions, classes, or any code-related content.
+	// Tool descriptions based on search mode
+	const toolDescription = isSemanticSearch
+		? `Semantic search across the codebase using AI embeddings. Use natural language to describe what you're looking for.
 
 **IMPORTANT: Use this tool PROACTIVELY before starting work, not reactively when stuck.**
 
-This tool searches across all codebase files and returns the most relevant matches with content snippets.
+This tool understands the meaning of your query and finds semantically related code, even if the exact words don't match.
 
-When to use this tool (BEFORE starting work):
-- **Before implementation**: Find existing patterns, similar functions, or reusable components
-- **Before refactoring**: Understand current implementation and dependencies
-- **Before adding features**: Check for existing similar functionality or conflicting code
-- **Before debugging**: Search for error messages, function names, or related code
-- **Before writing tests**: Find existing test patterns and test utilities
+When to use:
+- **Before implementation**: "authentication flow with JWT tokens"
+- **Before refactoring**: "error handling patterns"
+- **Before debugging**: "database connection retry logic"
 
-The search includes:
-- Source code files (.ts, .js, .tsx, .jsx, etc.)
-- Configuration files (.json, .yaml, .toml, etc.)
-- Documentation files (.md, .txt, etc.)
-- Build and deployment files
+**Best Practice**: Describe what you're looking for in plain English.`
+		: `Keyword search across the codebase using TF-IDF ranking. Use specific terms, function names, or technical keywords.
 
-**Best Practice**: Search the codebase BEFORE writing new code to avoid duplication and follow existing patterns.`)
+**IMPORTANT: Use this tool PROACTIVELY before starting work, not reactively when stuck.**
+
+This tool finds files containing your exact search terms, ranked by relevance.
+
+When to use:
+- **Find specific functions**: "getUserById", "handleAuth"
+- **Find error messages**: "ECONNREFUSED", "TypeError"
+- **Find imports/exports**: "export const", "import { Router }"
+
+**Best Practice**: Use specific keywords, function names, or exact terms.`
+
+	const queryDescription = isSemanticSearch
+		? 'Semantic search query - describe what you are looking for in natural language'
+		: 'Keyword search query - use specific terms, function names, or technical keywords'
+
+	// Define codebase search tool using builder pattern
+	const codebaseSearch = tool()
+		.description(toolDescription)
 		.input(
 			z.object({
-				query: z
-					.string()
-					.describe('Search query - use natural language, function names, or technical terms'),
+				query: z.string().describe(queryDescription),
 				limit: z
 					.number()
 					.default(10)
@@ -142,23 +179,31 @@ The search includes:
 					)
 				}
 
-				// Perform search
-				const results = await indexer.search(query, {
-					limit,
-					includeContent: include_content,
-					fileExtensions: file_extensions,
-					pathFilter: path_filter,
-					excludePaths: exclude_paths,
-				})
+				// Perform search (semantic if available, otherwise keyword)
+				const results = isSemanticSearch
+					? await semanticSearch(query, indexer, {
+							limit,
+							fileExtensions: file_extensions,
+							pathFilter: path_filter,
+							excludePaths: exclude_paths,
+						})
+					: await indexer.search(query, {
+							limit,
+							includeContent: include_content,
+							fileExtensions: file_extensions,
+							pathFilter: path_filter,
+							excludePaths: exclude_paths,
+						})
 
 				if (results.length === 0) {
 					return text(
-						`🔍 **No Results Found**\n\nNo files matched your search query: "${query}"\n\n**Suggestions:**\n- Try different search terms\n- Use more general keywords\n- Check if file filters are too restrictive\n\n**Total files indexed:** ${indexedCount}`
+						`🔍 **No Results Found**\n\nNo files matched your search query: "${query}"\n\n**Suggestions:**\n- Try different search terms\n- ${isSemanticSearch ? 'Describe what you are looking for differently' : 'Use more specific keywords'}\n- Check if file filters are too restrictive\n\n**Total files indexed:** ${indexedCount}`
 					)
 				}
 
 				// Format results
-				let formattedResults = `# 🔍 Codebase Search Results\n\n**Query:** "${query}"\n**Results:** ${results.length} / ${indexedCount} files\n\n`
+				const searchMode = isSemanticSearch ? 'Semantic' : 'Keyword'
+				let formattedResults = `# 🔍 ${searchMode} Search Results\n\n**Query:** "${query}"\n**Results:** ${results.length} / ${indexedCount} files\n\n`
 
 				for (let i = 0; i < results.length; i++) {
 					const result = results[i]
@@ -167,11 +212,18 @@ The search includes:
 					if (result.language) {
 						formattedResults += `- **Language:** ${result.language}\n`
 					}
-					formattedResults += `- **Size:** ${(result.size / 1024).toFixed(2)} KB\n`
-					formattedResults += `- **Matched Terms:** ${result.matchedTerms.join(', ')}\n`
+					if ('size' in result && result.size) {
+						formattedResults += `- **Size:** ${(result.size / 1024).toFixed(2)} KB\n`
+					}
+					if (result.matchedTerms && result.matchedTerms.length > 0) {
+						formattedResults += `- **Matched Terms:** ${result.matchedTerms.join(', ')}\n`
+					}
 
-					if (result.snippet) {
+					// Show content snippet
+					if ('snippet' in result && result.snippet) {
 						formattedResults += `\n**Snippet:**\n\`\`\`\n${result.snippet}\n\`\`\`\n`
+					} else if ('content' in result && result.content) {
+						formattedResults += `\n**Preview:**\n\`\`\`\n${result.content.substring(0, 500)}${result.content.length > 500 ? '...' : ''}\n\`\`\`\n`
 					}
 
 					formattedResults += '\n---\n\n'
@@ -184,17 +236,21 @@ The search includes:
 		})
 
 	// Create MCP server with the new SDK
+	const serverDescription = isSemanticSearch
+		? 'MCP server providing semantic code search using AI embeddings'
+		: 'MCP server providing keyword-based code search using TF-IDF'
+
 	const server = createServer({
 		name: SERVER_CONFIG.name,
 		version: SERVER_CONFIG.version,
-		instructions: SERVER_CONFIG.description,
+		instructions: serverDescription,
 		tools: {
 			codebase_search: codebaseSearch,
 		},
 		transport: stdio(),
 	})
 
-	Logger.info('✓ Registered codebase_search tool')
+	Logger.info(`✓ Registered codebase_search tool (${isSemanticSearch ? 'semantic' : 'keyword'} mode)`)
 
 	// Auto-index on startup if enabled
 	if (autoIndex) {
