@@ -1,5 +1,15 @@
 # @sylphx/codebase-search-mcp
 
+## 0.3.1 (2025-11-27)
+
+### 🐛 Bug Fixes
+
+- remove prepack scripts - let bump handle builds ([cfeebc7](https://github.com/SylphxAI/coderag/commit/cfeebc78d09903d8a920c002ad00c4177f45e537))
+- **mcp-server:** revert to workspace:* for co-release with core ([1b3f62b](https://github.com/SylphxAI/coderag/commit/1b3f62b71d911171bb22922887743162b2a075ee))
+- **mcp-server:** build core package before mcp-server in prepack ([7ea0c64](https://github.com/SylphxAI/coderag/commit/7ea0c64a16a41ca35a010f0d73911bb5791d2326))
+- **mcp-server:** use workspace:^ for @sylphx/coderag dependency ([cb73c7b](https://github.com/SylphxAI/coderag/commit/cb73c7baeb682e856c3463f05a25f7bdb5836b9e))
+- **mcp-server:** require @sylphx/coderag@^0.1.3 for LanceDB support (#5) ([2983c4e](https://github.com/SylphxAI/coderag/commit/2983c4e0d039359d13ba59d7777a22eec25cdda6))
+
 ## 0.3.0 (2025-11-27)
 
 ### ✨ Features

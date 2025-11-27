@@ -1,5 +1,11 @@
 # @sylphx/codebase-search
 
+## 0.1.4 (2025-11-27)
+
+### 🐛 Bug Fixes
+
+- remove prepack scripts - let bump handle builds ([cfeebc7](https://github.com/SylphxAI/coderag/commit/cfeebc78d09903d8a920c002ad00c4177f45e537))
+
 ## 0.1.3 (2025-11-27)
 
 ### ♻️ Refactoring
