@@ -266,6 +266,20 @@ export class CodebaseIndexer {
 		this.watcher.on('change', (filePath) => this.handleFileChange('change', filePath))
 		this.watcher.on('unlink', (filePath) => this.handleFileChange('unlink', filePath))
 
+		// Handle watcher errors (e.g., EMFILE: too many open files)
+		this.watcher.on('error', (error: NodeJS.ErrnoException) => {
+			if (error.code === 'EMFILE') {
+				console.error('[WARN] Too many open files - file watcher disabled')
+				console.error('[WARN] Run "ulimit -n 10240" to increase file limit')
+			} else {
+				console.error('[WARN] File watcher error:', error.message)
+			}
+			// Stop watching on error to prevent crashes
+			this.isWatching = false
+			this.watcher?.close().catch(() => {})
+			this.watcher = null
+		})
+
 		this.isWatching = true
 		console.error('[SUCCESS] File watcher started')
 	}
