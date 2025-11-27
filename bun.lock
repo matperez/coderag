@@ -7,7 +7,7 @@
       "devDependencies": {
         "@biomejs/biome": "^2.3.8",
         "@sylphx/biome-config": "^0.4.0",
-        "@sylphx/bump": "^0.6.2",
+        "@sylphx/bump": "^1.0.0",
         "@sylphx/doctor": "^1.23.3",
         "lefthook": "^2.0.4",
         "turbo": "^2.6.1",
@@ -370,7 +370,7 @@
 
     "@sylphx/biome-config": ["@sylphx/biome-config@0.4.0", "", { "peerDependencies": { "@biomejs/biome": "^2.0.0" } }, "sha512-fvIZ5H61VfbQzp2X2E5FoRtzUBS03rGvuaxby6MoP4fmgXaYS35CWgU+zswKoo2DAriBbIKfWkYsT/Bn2ih0HA=="],
 
-    "@sylphx/bump": ["@sylphx/bump@0.6.2", "", { "dependencies": { "citty": "^0.1.6", "consola": "^3.4.2", "defu": "^6.1.4", "picocolors": "^1.1.1", "semver": "^7.6.3" }, "bin": { "bump": "dist/cli.js" } }, "sha512-NxzKU0oz2rXX1/Nt2Yaaw1DiXAVrUVjKBAIkzPJ/dS4MuFKDU7swJcrbHIdr28S/nGAiUyqsDXJhbbKOaYCUVQ=="],
+    "@sylphx/bump": ["@sylphx/bump@1.0.0", "", { "dependencies": { "citty": "^0.1.6", "consola": "^3.4.2", "defu": "^6.1.4", "picocolors": "^1.1.1", "semver": "^7.6.3", "zx": "^8.8.5" }, "bin": { "bump": "dist/cli.js" } }, "sha512-KKFORd4dYSHBTHqQICig76UssLf45emAy1Z1dfVhxBNi+VH180HMsvseiF4tEeJMUBGLo736wLQR4M+VWMwfwA=="],
 
     "@sylphx/coderag": ["@sylphx/coderag@workspace:packages/core"],
 
@@ -919,6 +919,8 @@
     "zod-to-json-schema": ["zod-to-json-schema@3.24.6", "", { "peerDependencies": { "zod": "^3.24.1" } }, "sha512-h/z3PKvcTcTetyjl1fkj79MHNEjm+HpD6NXheWjzOekY7kV+lwDYnHw+ivHkijnCSMz1yJaWBD9vu/Fcmk+vEg=="],
 
     "zwitch": ["zwitch@2.0.4", "", {}, "sha512-bXE4cR/kVZhKZX/RjPEflHaKVhUVl85noU3v6b8apfQEc1x4A+zBxjZ4lN8LqGd6WZ3dl98pY4o717VFmoPp+A=="],
+
+    "zx": ["zx@8.8.5", "", { "bin": { "zx": "build/cli.js" } }, "sha512-SNgDF5L0gfN7FwVOdEFguY3orU5AkfFZm9B5YSHog/UDHv+lvmd82ZAsOenOkQixigwH2+yyH198AwNdKhj+RA=="],
 
     "@ai-sdk/openai/zod": ["zod@3.25.76", "", {}, "sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ=="],
 
