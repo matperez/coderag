@@ -3,70 +3,70 @@
  * Core library for intelligent codebase search using TF-IDF
  */
 
+export {
+	type ASTChunkOptions,
+	type ChunkResult,
+	chunkCodeByAST,
+	chunkCodeByASTSimple,
+} from './ast-chunking.js'
+export {
+	chunkText,
+	composeProviders,
+	cosineSimilarity,
+	createDefaultConfig,
+	createEmbeddingProvider,
+	createMockProvider,
+	createOpenAIProvider,
+	type EmbeddingConfig,
+	type EmbeddingProvider,
+	generateMockEmbedding,
+	getDefaultEmbeddingProvider,
+	normalizeVector,
+} from './embeddings.js'
+export {
+	type HybridSearchOptions,
+	type HybridSearchResult,
+	hybridSearch,
+	keywordSearch,
+	semanticSearch,
+} from './hybrid-search.js'
+export {
+	type IncrementalStats,
+	IncrementalTFIDF,
+	type IncrementalUpdate,
+} from './incremental-tfidf.js'
 // Re-export main components
 export {
-  CodebaseIndexer,
-  type IndexerOptions,
-  type IndexingStatus,
-  type SearchResult,
-  type FileChangeEvent,
-} from './indexer.js';
+	CodebaseIndexer,
+	type FileChangeEvent,
+	type IndexerOptions,
+	type IndexingStatus,
+	type SearchResult,
+} from './indexer.js'
+export { type CacheEntry, type CacheStats, createCacheKey, LRUCache } from './search-cache.js'
+export { type CodebaseFile, MemoryStorage } from './storage.js'
+export { PersistentStorage } from './storage-persistent.js'
 export {
-  buildSearchIndex,
-  searchDocuments,
-  processQuery,
-  calculateCosineSimilarity,
-  type SearchIndex,
-  type DocumentVector,
-} from './tfidf.js';
-export { MemoryStorage, type CodebaseFile } from './storage.js';
-export { PersistentStorage } from './storage-persistent.js';
+	buildSearchIndex,
+	calculateCosineSimilarity,
+	type DocumentVector,
+	processQuery,
+	type SearchIndex,
+	searchDocuments,
+} from './tfidf.js'
 export {
-  loadGitignore,
-  scanFiles,
-  isTextFile,
-  detectLanguage,
-  simpleHash,
-  type ScanOptions,
-  type ScanResult,
-} from './utils.js';
+	detectLanguage,
+	isTextFile,
+	loadGitignore,
+	type ScanOptions,
+	type ScanResult,
+	scanFiles,
+	simpleHash,
+} from './utils.js'
 export {
-  createEmbeddingProvider,
-  createOpenAIProvider,
-  createMockProvider,
-  getDefaultEmbeddingProvider,
-  createDefaultConfig,
-  generateMockEmbedding,
-  chunkText,
-  cosineSimilarity,
-  normalizeVector,
-  composeProviders,
-  type EmbeddingConfig,
-  type EmbeddingProvider,
-} from './embeddings.js';
-export { LRUCache, createCacheKey, type CacheEntry, type CacheStats } from './search-cache.js';
-export {
-  IncrementalTFIDF,
-  type IncrementalUpdate,
-  type IncrementalStats,
-} from './incremental-tfidf.js';
-export {
-  VectorStorage,
-  type VectorDocument,
-  type VectorSearchResult,
-  type VectorStorageOptions,
-  type VectorStorageStats,
-} from './vector-storage.js';
-export {
-  hybridSearch,
-  semanticSearch,
-  keywordSearch,
-  type HybridSearchOptions,
-  type HybridSearchResult,
-} from './hybrid-search.js';
-export {
-  chunkCodeByAST,
-  chunkCodeByASTSimple,
-  type ASTChunkOptions,
-  type ChunkResult,
-} from './ast-chunking.js';
+	type VectorDocument,
+	type VectorSearchResult,
+	VectorStorage,
+	type VectorStorageOptions,
+	type VectorStorageStats,
+} from './vector-storage.js'

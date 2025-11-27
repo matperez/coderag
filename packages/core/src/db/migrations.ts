@@ -2,31 +2,31 @@
  * Database migrations
  */
 
-import type Database from 'better-sqlite3';
+import type Database from 'better-sqlite3'
 
 /**
  * Run all migrations
  */
 export function runMigrations(sqlite: Database.Database): void {
-  // Create migrations table if it doesn't exist
-  sqlite.exec(`
+	// Create migrations table if it doesn't exist
+	sqlite.exec(`
     CREATE TABLE IF NOT EXISTS __drizzle_migrations (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       hash TEXT NOT NULL UNIQUE,
       created_at INTEGER NOT NULL
     );
-  `);
+  `)
 
-  // Migration 1: Initial schema
-  const migration1Hash = 'initial_schema_v1';
-  const existingMigration = sqlite
-    .prepare('SELECT id FROM __drizzle_migrations WHERE hash = ?')
-    .get(migration1Hash);
+	// Migration 1: Initial schema
+	const migration1Hash = 'initial_schema_v1'
+	const existingMigration = sqlite
+		.prepare('SELECT id FROM __drizzle_migrations WHERE hash = ?')
+		.get(migration1Hash)
 
-  if (!existingMigration) {
-    console.error('[DB] Running migration: initial_schema_v1');
+	if (!existingMigration) {
+		console.error('[DB] Running migration: initial_schema_v1')
 
-    sqlite.exec(`
+		sqlite.exec(`
       -- Files table
       CREATE TABLE IF NOT EXISTS files (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -74,12 +74,12 @@ export function runMigrations(sqlite: Database.Database): void {
         value TEXT NOT NULL,
         updated_at INTEGER NOT NULL
       );
-    `);
+    `)
 
-    sqlite
-      .prepare('INSERT INTO __drizzle_migrations (hash, created_at) VALUES (?, ?)')
-      .run(migration1Hash, Date.now());
+		sqlite
+			.prepare('INSERT INTO __drizzle_migrations (hash, created_at) VALUES (?, ?)')
+			.run(migration1Hash, Date.now())
 
-    console.error('[DB] Migration complete: initial_schema_v1');
-  }
+		console.error('[DB] Migration complete: initial_schema_v1')
+	}
 }

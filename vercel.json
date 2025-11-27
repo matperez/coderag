@@ -1,6 +1,6 @@
 {
-  "buildCommand": "cd docs && bun install && bun run docs:build",
-  "outputDirectory": "docs/.vitepress/dist",
-  "framework": null,
-  "installCommand": "cd docs && bun install"
+	"buildCommand": "cd docs && bun install && bun run docs:build",
+	"outputDirectory": "docs/.vitepress/dist",
+	"framework": null,
+	"installCommand": "cd docs && bun install"
 }

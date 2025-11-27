@@ -1,86 +1,86 @@
 {
-  "name": "@sylphx/coderag",
-  "version": "0.1.0",
-  "description": "Lightning-fast hybrid code search (TF-IDF + Vector) - RAG-ready for AI assistants",
-  "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
-    },
-    "./indexer": {
-      "types": "./dist/indexer.d.ts",
-      "import": "./dist/indexer.js"
-    },
-    "./tfidf": {
-      "types": "./dist/tfidf.d.ts",
-      "import": "./dist/tfidf.js"
-    },
-    "./storage": {
-      "types": "./dist/storage.d.ts",
-      "import": "./dist/storage.js"
-    },
-    "./utils": {
-      "types": "./dist/utils.d.ts",
-      "import": "./dist/utils.js"
-    }
-  },
-  "files": [
-    "dist",
-    "README.md"
-  ],
-  "scripts": {
-    "build": "tsc",
-    "dev": "tsc --watch",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "type-check": "tsc --noEmit",
-    "clean": "rm -rf dist",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
-    "db:studio": "drizzle-kit studio"
-  },
-  "dependencies": {
-    "@ai-sdk/openai": "^1.0.11",
-    "@huggingface/transformers": "^3.7.6",
-    "@sylphx/synth": "^0.1.3",
-    "@sylphx/synth-html": "latest",
-    "@sylphx/synth-js": "^0.2.0",
-    "@sylphx/synth-json": "latest",
-    "@sylphx/synth-md": "latest",
-    "@sylphx/synth-yaml": "latest",
-    "ai": "^4.0.35",
-    "better-sqlite3": "^11.8.1",
-    "chokidar": "^4.0.3",
-    "drizzle-orm": "^0.36.4",
-    "hnswlib-node": "^3.0.0",
-    "ignore": "^7.0.5"
-  },
-  "devDependencies": {
-    "@types/better-sqlite3": "^7.6.12",
-    "@types/node": "^24.9.2",
-    "drizzle-kit": "^0.28.1",
-    "typescript": "^5.9.3"
-  },
-  "keywords": [
-    "rag",
-    "code-search",
-    "retrieval-augmented-generation",
-    "vector-search",
-    "embeddings",
-    "tfidf",
-    "hybrid-search",
-    "semantic-search",
-    "code-indexing",
-    "mcp"
-  ],
-  "author": "SylphxAI",
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/SylphxAI/coderag.git",
-    "directory": "packages/core"
-  }
+	"name": "@sylphx/coderag",
+	"version": "0.1.0",
+	"description": "Lightning-fast hybrid code search (TF-IDF + Vector) - RAG-ready for AI assistants",
+	"type": "module",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		},
+		"./indexer": {
+			"types": "./dist/indexer.d.ts",
+			"import": "./dist/indexer.js"
+		},
+		"./tfidf": {
+			"types": "./dist/tfidf.d.ts",
+			"import": "./dist/tfidf.js"
+		},
+		"./storage": {
+			"types": "./dist/storage.d.ts",
+			"import": "./dist/storage.js"
+		},
+		"./utils": {
+			"types": "./dist/utils.d.ts",
+			"import": "./dist/utils.js"
+		}
+	},
+	"files": [
+		"dist",
+		"README.md"
+	],
+	"scripts": {
+		"build": "tsc",
+		"dev": "tsc --watch",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"type-check": "tsc --noEmit",
+		"clean": "rm -rf dist",
+		"db:generate": "drizzle-kit generate",
+		"db:migrate": "drizzle-kit migrate",
+		"db:studio": "drizzle-kit studio"
+	},
+	"dependencies": {
+		"@ai-sdk/openai": "^1.0.11",
+		"@huggingface/transformers": "^3.7.6",
+		"@sylphx/synth": "^0.1.3",
+		"@sylphx/synth-html": "latest",
+		"@sylphx/synth-js": "^0.2.0",
+		"@sylphx/synth-json": "latest",
+		"@sylphx/synth-md": "latest",
+		"@sylphx/synth-yaml": "latest",
+		"ai": "^4.0.35",
+		"better-sqlite3": "^11.8.1",
+		"chokidar": "^4.0.3",
+		"drizzle-orm": "^0.36.4",
+		"hnswlib-node": "^3.0.0",
+		"ignore": "^7.0.5"
+	},
+	"devDependencies": {
+		"@types/better-sqlite3": "^7.6.12",
+		"@types/node": "^24.9.2",
+		"drizzle-kit": "^0.28.1",
+		"typescript": "^5.9.3"
+	},
+	"keywords": [
+		"rag",
+		"code-search",
+		"retrieval-augmented-generation",
+		"vector-search",
+		"embeddings",
+		"tfidf",
+		"hybrid-search",
+		"semantic-search",
+		"code-indexing",
+		"mcp"
+	],
+	"author": "SylphxAI",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/SylphxAI/coderag.git",
+		"directory": "packages/core"
+	}
 }

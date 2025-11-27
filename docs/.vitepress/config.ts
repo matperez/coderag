@@ -1,92 +1,90 @@
-import { defineConfig } from 'vitepress';
+import { defineConfig } from 'vitepress'
 
 export default defineConfig({
-  title: 'CodeRAG',
-  description: 'Lightning-fast hybrid code search (TF-IDF + Vector) - RAG-ready for AI assistants',
-  base: '/',
-  ignoreDeadLinks: true,
+	title: 'CodeRAG',
+	description: 'Lightning-fast hybrid code search (TF-IDF + Vector) - RAG-ready for AI assistants',
+	base: '/',
+	ignoreDeadLinks: true,
 
-  themeConfig: {
-    logo: '/logo.svg',
+	themeConfig: {
+		logo: '/logo.svg',
 
-    nav: [
-      { text: 'Guide', link: '/guide/getting-started' },
-      { text: 'API', link: '/api/core' },
-      { text: 'MCP Server', link: '/mcp/overview' },
-      { text: 'GitHub', link: 'https://github.com/sylphlab/coderag' }
-    ],
+		nav: [
+			{ text: 'Guide', link: '/guide/getting-started' },
+			{ text: 'API', link: '/api/core' },
+			{ text: 'MCP Server', link: '/mcp/overview' },
+			{ text: 'GitHub', link: 'https://github.com/sylphlab/coderag' },
+		],
 
-    sidebar: {
-      '/guide/': [
-        {
-          text: 'Introduction',
-          items: [
-            { text: 'Getting Started', link: '/guide/getting-started' },
-            { text: 'Installation', link: '/guide/installation' },
-            { text: 'Quick Start', link: '/guide/quick-start' }
-          ]
-        },
-        {
-          text: 'Core Concepts',
-          items: [
-            { text: 'TF-IDF Search', link: '/guide/tfidf' },
-            { text: 'Vector Search', link: '/guide/vector-search' },
-            { text: 'Hybrid Search', link: '/guide/hybrid-search' },
-            { text: 'Code Tokenization', link: '/guide/tokenization' }
-          ]
-        },
-        {
-          text: 'Configuration',
-          items: [
-            { text: 'Embedding Providers', link: '/guide/providers' },
-            { text: 'Custom Providers', link: '/guide/custom-providers' },
-            { text: 'Performance Tuning', link: '/guide/performance' }
-          ]
-        }
-      ],
-      '/api/': [
-        {
-          text: 'API Reference',
-          items: [
-            { text: 'Core Package', link: '/api/core' },
-            { text: 'Embeddings', link: '/api/embeddings' },
-            { text: 'Search', link: '/api/search' },
-            { text: 'Storage', link: '/api/storage' }
-          ]
-        }
-      ],
-      '/mcp/': [
-        {
-          text: 'MCP Server',
-          items: [
-            { text: 'Overview', link: '/mcp/overview' },
-            { text: 'Installation', link: '/mcp/installation' },
-            { text: 'Tools', link: '/mcp/tools' },
-            { text: 'Configuration', link: '/mcp/configuration' }
-          ]
-        }
-      ]
-    },
+		sidebar: {
+			'/guide/': [
+				{
+					text: 'Introduction',
+					items: [
+						{ text: 'Getting Started', link: '/guide/getting-started' },
+						{ text: 'Installation', link: '/guide/installation' },
+						{ text: 'Quick Start', link: '/guide/quick-start' },
+					],
+				},
+				{
+					text: 'Core Concepts',
+					items: [
+						{ text: 'TF-IDF Search', link: '/guide/tfidf' },
+						{ text: 'Vector Search', link: '/guide/vector-search' },
+						{ text: 'Hybrid Search', link: '/guide/hybrid-search' },
+						{ text: 'Code Tokenization', link: '/guide/tokenization' },
+					],
+				},
+				{
+					text: 'Configuration',
+					items: [
+						{ text: 'Embedding Providers', link: '/guide/providers' },
+						{ text: 'Custom Providers', link: '/guide/custom-providers' },
+						{ text: 'Performance Tuning', link: '/guide/performance' },
+					],
+				},
+			],
+			'/api/': [
+				{
+					text: 'API Reference',
+					items: [
+						{ text: 'Core Package', link: '/api/core' },
+						{ text: 'Embeddings', link: '/api/embeddings' },
+						{ text: 'Search', link: '/api/search' },
+						{ text: 'Storage', link: '/api/storage' },
+					],
+				},
+			],
+			'/mcp/': [
+				{
+					text: 'MCP Server',
+					items: [
+						{ text: 'Overview', link: '/mcp/overview' },
+						{ text: 'Installation', link: '/mcp/installation' },
+						{ text: 'Tools', link: '/mcp/tools' },
+						{ text: 'Configuration', link: '/mcp/configuration' },
+					],
+				},
+			],
+		},
 
-    socialLinks: [
-      { icon: 'github', link: 'https://github.com/sylphlab/coderag' }
-    ],
+		socialLinks: [{ icon: 'github', link: 'https://github.com/sylphlab/coderag' }],
 
-    footer: {
-      message: 'Released under the MIT License.',
-      copyright: 'Copyright © 2024 SylphLab'
-    },
+		footer: {
+			message: 'Released under the MIT License.',
+			copyright: 'Copyright © 2024 SylphLab',
+		},
 
-    search: {
-      provider: 'local'
-    }
-  },
+		search: {
+			provider: 'local',
+		},
+	},
 
-  markdown: {
-    theme: {
-      light: 'github-light',
-      dark: 'github-dark'
-    },
-    lineNumbers: true
-  }
-});
+	markdown: {
+		theme: {
+			light: 'github-light',
+			dark: 'github-dark',
+		},
+		lineNumbers: true,
+	},
+})
