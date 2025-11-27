@@ -1,5 +1,11 @@
 # @sylphx/codebase-search-mcp
 
+## 0.3.5 (2025-11-27)
+
+### 🐛 Bug Fixes
+
+- **deps:** update @sylphx/mcp-server-sdk to 1.1.2 ([f3dc312](https://github.com/SylphxAI/coderag/commit/f3dc312bcb599642a7b7d23b7596661e1b30fd06))
+
 ## 0.3.4 (2025-11-27)
 
 ### ✨ Features
