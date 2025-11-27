@@ -202,7 +202,8 @@ export class PersistentStorage implements Storage {
 		// Delete existing vectors for this file
 		await db.delete(schema.documentVectors).where(eq(schema.documentVectors.fileId, file.id))
 
-		// Insert new vectors
+		// Insert new vectors in batches (SQLite has ~999 bind variable limit, 5 fields per row = 199 rows)
+		const BATCH_SIZE = 199
 		const vectors = Array.from(terms.entries()).map(([term, scores]) => ({
 			fileId: file.id,
 			term,
@@ -211,8 +212,9 @@ export class PersistentStorage implements Storage {
 			rawFreq: scores.rawFreq,
 		}))
 
-		if (vectors.length > 0) {
-			await db.insert(schema.documentVectors).values(vectors)
+		for (let i = 0; i < vectors.length; i += BATCH_SIZE) {
+			const batch = vectors.slice(i, i + BATCH_SIZE)
+			await db.insert(schema.documentVectors).values(batch)
 		}
 	}
 
@@ -291,8 +293,8 @@ export class PersistentStorage implements Storage {
 				}
 			}
 
-			// Insert in chunks to avoid SQLite variable limits
-			const chunkSize = 500
+			// Insert in chunks to avoid SQLite variable limits (5 fields per row = 199 rows max)
+			const chunkSize = 199
 			for (let i = 0; i < allVectors.length; i += chunkSize) {
 				const chunk = allVectors.slice(i, i + chunkSize)
 				if (chunk.length > 0) {
@@ -316,15 +318,17 @@ export class PersistentStorage implements Storage {
 		// Clear existing IDF scores
 		await db.delete(schema.idfScores)
 
-		// Insert new scores
+		// Insert new scores in batches (SQLite has ~999 bind variable limit, 3 fields per row = 300 rows)
+		const BATCH_SIZE = 300
 		const scores = Array.from(idf.entries()).map(([term, idfScore]) => ({
 			term,
 			idf: idfScore,
 			documentFrequency: docFreq.get(term) || 0,
 		}))
 
-		if (scores.length > 0) {
-			await db.insert(schema.idfScores).values(scores)
+		for (let i = 0; i < scores.length; i += BATCH_SIZE) {
+			const batch = scores.slice(i, i + BATCH_SIZE)
+			await db.insert(schema.idfScores).values(batch)
 		}
 	}
 
