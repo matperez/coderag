@@ -1,6 +1,6 @@
 # CodeRAG
 
-Lightning-fast hybrid code search (TF-IDF + Vector) - RAG-ready for AI assistants.
+Semantic code search with vector embeddings - RAG-ready for AI assistants.
 
 ## 📦 Packages
 
@@ -11,7 +11,7 @@ Lightning-fast hybrid code search (TF-IDF + Vector) - RAG-ready for AI assistant
 
 ## ✨ Features
 
-- 🔍 **Hybrid Search** - TF-IDF + Vector search with RRF fusion
+- 🔍 **Semantic Search** - Vector search with embeddings, TF-IDF fallback
 - 🌳 **AST-based Chunking** - Smart code splitting using [Synth](https://github.com/SylphxAI/synth) parsers
 - 🚀 **Fast Indexing** - 1000-2000 files/second with SQLite persistence
 - 👁️ **File Watching** - Real-time index updates on file changes
@@ -73,7 +73,7 @@ coderag/
 │   │   │   ├── indexer.ts        # Codebase indexing + watch
 │   │   │   ├── tfidf.ts          # TF-IDF implementation
 │   │   │   ├── ast-chunking.ts   # AST-based code chunking
-│   │   │   ├── hybrid-search.ts  # TF-IDF + Vector fusion
+│   │   │   ├── hybrid-search.ts  # Vector search with TF-IDF fallback
 │   │   │   ├── vector-storage.ts # Vector storage for embeddings
 │   │   │   ├── embeddings.ts     # OpenAI embeddings provider
 │   │   │   └── storage-persistent.ts  # SQLite storage

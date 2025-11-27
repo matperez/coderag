@@ -1,6 +1,6 @@
 # @sylphx/coderag
 
-Core library for intelligent codebase search using hybrid TF-IDF + Vector search.
+Core library for semantic code search using vector embeddings with TF-IDF fallback.
 
 ## Installation
 
@@ -10,7 +10,7 @@ bun add @sylphx/coderag
 
 ## Features
 
-- 🔍 **Hybrid Search** - Combines TF-IDF and vector search with RRF fusion
+- 🔍 **Semantic Search** - Vector search with embeddings, TF-IDF fallback
 - 🌳 **AST-based Chunking** - Smart code splitting using Synth parsers
 - 💾 **Persistent Storage** - SQLite-backed index for instant startup
 - ⚡ **Incremental Updates** - Only reindex changed files

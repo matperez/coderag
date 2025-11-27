@@ -2,7 +2,7 @@
 	"name": "coderag",
 	"version": "0.0.0",
 	"private": true,
-	"description": "Lightning-fast hybrid code search (TF-IDF + Vector) - RAG-ready for AI assistants",
+	"description": "Semantic code search with vector embeddings - RAG-ready for AI assistants",
 	"workspaces": [
 		"packages/*"
 	],
@@ -47,7 +47,7 @@
 		"vector-search",
 		"embeddings",
 		"tfidf",
-		"hybrid-search",
+		"semantic-search",
 		"mcp",
 		"model-context-protocol",
 		"codebase-indexing"
