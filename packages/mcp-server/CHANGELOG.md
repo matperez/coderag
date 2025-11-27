@@ -1,5 +1,19 @@
 # @sylphx/codebase-search-mcp
 
+## 0.3.4 (2025-11-27)
+
+### ✨ Features
+
+- **mcp:** add semantic search with OpenAI embeddings, TF-IDF fallback ([799861c](https://github.com/SylphxAI/coderag/commit/799861c108110f26681dcd6480f4795d108b28cf))
+
+### 🐛 Bug Fixes
+
+- **ci:** build packages before npm publish ([9c65abc](https://github.com/SylphxAI/coderag/commit/9c65abca7b99a413a7eb650f7eb01b2ca640eae4))
+
+### 🔧 Chores
+
+- upgrade @sylphx/bump to 1.0.0 and revert workarounds ([7c54ad9](https://github.com/SylphxAI/coderag/commit/7c54ad916910664bf52f69b363b6533fbb634425))
+
 ## 0.3.3 (2025-11-27)
 
 ### 🐛 Bug Fixes
