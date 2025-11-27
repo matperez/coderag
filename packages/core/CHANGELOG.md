@@ -1,5 +1,16 @@
 # @sylphx/codebase-search
 
+## 0.1.7 (2025-11-27)
+
+### 🐛 Bug Fixes
+
+- **core:** batch SQLite inserts to avoid variable limit ([712a7ab](https://github.com/SylphxAI/coderag/commit/712a7ab8459f5a87744ef1276287894efbdddece))
+- **core:** handle permission errors when scanning directories ([917e056](https://github.com/SylphxAI/coderag/commit/917e05605eb96ece041c79027796f6bddddd8d80))
+
+### 📚 Documentation
+
+- correct search description - vector search with TF-IDF fallback, not hybrid ([2c9e4eb](https://github.com/SylphxAI/coderag/commit/2c9e4ebb742a41510e043c092321830cf015760d))
+
 ## 0.1.6 (2025-11-27)
 
 ### 🐛 Bug Fixes
