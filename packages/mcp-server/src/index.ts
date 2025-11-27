@@ -7,10 +7,10 @@
 
 import {
 	CodebaseIndexer,
-	PersistentStorage,
 	createEmbeddingProvider,
-	semanticSearch,
 	type EmbeddingProvider,
+	PersistentStorage,
+	semanticSearch,
 } from '@sylphx/coderag'
 import { createServer, stdio, text, tool } from '@sylphx/mcp-server-sdk'
 import { z } from 'zod'
@@ -250,7 +250,9 @@ When to use:
 		transport: stdio(),
 	})
 
-	Logger.info(`✓ Registered codebase_search tool (${isSemanticSearch ? 'semantic' : 'keyword'} mode)`)
+	Logger.info(
+		`✓ Registered codebase_search tool (${isSemanticSearch ? 'semantic' : 'keyword'} mode)`
+	)
 
 	// Auto-index on startup if enabled
 	if (autoIndex) {
