@@ -120,8 +120,7 @@ export function loadGitignore(codebaseRoot: string): Ignore {
 		'*.log',
 		'tmp',
 		'temp',
-		// Coderag storage folders (prevent scanning own index)
-		'.codebase-search',
+		// Coderag storage folder (prevent scanning own index)
 		'.coderag',
 	])
 

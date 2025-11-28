@@ -62,10 +62,30 @@ function writeProjectMetadata(dataDir: string, codebaseRoot: string): void {
 }
 
 /**
+ * Clean up old .codebase-search folder from previous versions
+ * This folder is no longer used - data is now stored in ~/.coderag/
+ */
+function cleanupOldStorage(codebaseRoot: string): void {
+	const oldDir = path.join(codebaseRoot, '.codebase-search')
+	if (fs.existsSync(oldDir)) {
+		try {
+			fs.rmSync(oldDir, { recursive: true, force: true })
+			console.error(`[INFO] Cleaned up old storage: ${oldDir}`)
+		} catch {
+			// Ignore errors - not critical
+			console.error(`[WARN] Failed to clean up old storage: ${oldDir}`)
+		}
+	}
+}
+
+/**
  * Create database client
  */
 export function createDb(config: DbConfig = {}): DbInstance {
 	const codebaseRoot = config.codebaseRoot || process.cwd()
+
+	// Clean up old .codebase-search folder (no longer used)
+	cleanupOldStorage(codebaseRoot)
 
 	// Use global ~/.coderag/projects/<hash>/ directory
 	const dbDir = getCoderagDataDir(codebaseRoot)
