@@ -10,6 +10,16 @@
 
 - trigger release for mcp-server 0.3.17 ([fcb02f3](https://github.com/SylphxAI/coderag/commit/fcb02f3cf67ab5097d3bea942f003c0f52462339))
 
+## 0.1.14 (2025-11-28)
+
+### ✨ Features
+
+- **core:** upgrade search from TF-IDF to BM25 ([3fbad14](https://github.com/SylphxAI/coderag/commit/3fbad14e775c3b413cd4c3af4b70d1086842b928))
+
+### 🔧 Chores
+
+- trigger release for mcp-server 0.3.17 ([fcb02f3](https://github.com/SylphxAI/coderag/commit/fcb02f3cf67ab5097d3bea942f003c0f52462339))
+
 ## 0.1.13 (2025-11-28)
 
 ### ✨ Features
