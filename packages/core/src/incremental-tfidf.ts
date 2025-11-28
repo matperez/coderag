@@ -4,7 +4,7 @@
  */
 
 import type { DocumentVector } from './tfidf.js'
-import { tokenize } from './tfidf.js'
+import { tokenize } from './tfidf.js' // async tokenize using StarCoder2
 
 export interface IncrementalUpdate {
 	type: 'add' | 'update' | 'delete'
@@ -71,7 +71,7 @@ export class IncrementalTFIDF {
 			switch (update.type) {
 				case 'add':
 					if (update.newContent) {
-						const terms = this.extractTerms(update.newContent)
+						const terms = await this.extractTerms(update.newContent)
 						this.addDocumentInternal(update.uri, terms, affectedTerms)
 						affectedDocuments.add(update.uri)
 					}
@@ -80,7 +80,7 @@ export class IncrementalTFIDF {
 				case 'update':
 					if (update.oldDocument && update.newContent) {
 						const oldTerms = update.oldDocument.rawTerms
-						const newTerms = this.extractTerms(update.newContent)
+						const newTerms = await this.extractTerms(update.newContent)
 						this.updateDocumentInternal(update.uri, oldTerms, newTerms, affectedTerms)
 						affectedDocuments.add(update.uri)
 					}
@@ -220,10 +220,10 @@ export class IncrementalTFIDF {
 	}
 
 	/**
-	 * Extract terms from content
+	 * Extract terms from content (async - uses StarCoder2)
 	 */
-	private extractTerms(content: string): Map<string, number> {
-		const tokens = tokenize(content)
+	private async extractTerms(content: string): Promise<Map<string, number>> {
+		const tokens = await tokenize(content)
 		const frequencies = new Map<string, number>()
 
 		for (const token of tokens) {
@@ -287,7 +287,7 @@ export class IncrementalTFIDF {
 	 * Check if full rebuild is recommended
 	 * Returns true if changes are too extensive for incremental update
 	 */
-	shouldFullRebuild(updates: IncrementalUpdate[]): boolean {
+	async shouldFullRebuild(updates: IncrementalUpdate[]): Promise<boolean> {
 		const changeRatio = updates.length / Math.max(this.totalDocuments, 1)
 
 		// If >20% of documents changed, recommend full rebuild
@@ -300,7 +300,7 @@ export class IncrementalTFIDF {
 		for (const update of updates) {
 			if (update.type === 'add' || update.type === 'update') {
 				if (update.newContent) {
-					const tokens = tokenize(update.newContent)
+					const tokens = await tokenize(update.newContent)
 					for (const token of tokens) {
 						if (!this.documentFrequency.has(token)) {
 							newTerms.add(token)

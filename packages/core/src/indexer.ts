@@ -735,7 +735,7 @@ export class CodebaseIndexer {
 		}
 
 		// Check if incremental update is recommended
-		if (this.incrementalEngine.shouldFullRebuild(this.pendingFileChanges)) {
+		if (await this.incrementalEngine.shouldFullRebuild(this.pendingFileChanges)) {
 			console.error('[INFO] Changes too extensive, performing full rebuild instead of incremental')
 			this.pendingFileChanges = []
 			return this.fullRebuildSearchIndex()
@@ -782,7 +782,7 @@ export class CodebaseIndexer {
 			content: file.content,
 		}))
 
-		this.searchIndex = buildSearchIndex(documents)
+		this.searchIndex = await buildSearchIndex(documents)
 
 		// Reinitialize incremental engine
 		this.incrementalEngine = new IncrementalTFIDF(this.searchIndex.documents, this.searchIndex.idf)
@@ -895,10 +895,10 @@ export class CodebaseIndexer {
 
 		if (this.lowMemoryMode && this.storage instanceof PersistentStorage) {
 			// SQL-based search - doesn't require loading index to memory
-			const queryTokens = getQueryTokens(query)
+			const queryTokens = await getQueryTokens(query)
 			const candidates = await this.storage.searchByTerms(queryTokens, { limit: limit * 3 })
 			const idf = await this.storage.getIdfScoresForTerms(queryTokens)
-			results = searchDocumentsFromStorage(query, candidates, idf, { limit })
+			results = await searchDocumentsFromStorage(query, candidates, idf, { limit })
 			console.error(`[SQL SEARCH] Found ${results.length} results`)
 		} else {
 			// In-memory search (faster but uses more memory)

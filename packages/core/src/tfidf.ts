@@ -1,20 +1,23 @@
 /**
  * TF-IDF (Term Frequency-Inverse Document Frequency) implementation
- * Simplified version for codebase search
+ * Using StarCoder2 tokenizer for code-aware tokenization
  */
 
-import { simpleCodeTokenize } from './code-tokenizer.js'
+import { initializeTokenizer, tokenize as starcoderTokenize } from './code-tokenizer.js'
+
+// Re-export tokenize for external use
+export { initializeTokenizer }
 
 // Query token cache - avoids re-tokenizing the same query (CPU optimization)
 const queryTokenCache = new Map<string, string[]>()
 const QUERY_CACHE_MAX_SIZE = 100
 
-function getCachedQueryTokens(query: string): string[] {
+async function getCachedQueryTokens(query: string): Promise<string[]> {
 	const cached = queryTokenCache.get(query)
 	if (cached) return cached
 
 	// Tokenize and dedupe
-	const tokens = [...new Set(tokenize(query))]
+	const tokens = [...new Set(await tokenize(query))]
 
 	// LRU-style eviction: remove oldest if full
 	if (queryTokenCache.size >= QUERY_CACHE_MAX_SIZE) {
@@ -44,11 +47,10 @@ export interface SearchIndex {
 }
 
 /**
- * Code-aware tokenizer using StarCoder2 approach
- * Handles camelCase, snake_case, identifiers, and string contents
+ * Tokenize code using StarCoder2 (async)
  */
-export function tokenize(text: string): string[] {
-	return simpleCodeTokenize(text)
+export async function tokenize(text: string): Promise<string[]> {
+	return starcoderTokenize(text)
 }
 
 /**
@@ -117,10 +119,10 @@ function calculateMagnitude(vector: Map<string, number>): number {
 }
 
 /**
- * Extract term frequencies from content
+ * Extract term frequencies from content (async - uses StarCoder2)
  */
-function extractTermFrequencies(content: string): Map<string, number> {
-	const tokens = tokenize(content)
+async function extractTermFrequencies(content: string): Promise<Map<string, number>> {
+	const tokens = await tokenize(content)
 	const frequencies = new Map<string, number>()
 
 	for (const token of tokens) {
@@ -131,14 +133,18 @@ function extractTermFrequencies(content: string): Map<string, number> {
 }
 
 /**
- * Build TF-IDF search index from documents
+ * Build TF-IDF search index from documents (async - uses StarCoder2)
  */
-export function buildSearchIndex(documents: Array<{ uri: string; content: string }>): SearchIndex {
+export async function buildSearchIndex(
+	documents: Array<{ uri: string; content: string }>
+): Promise<SearchIndex> {
 	// Extract term frequencies for all documents
-	const documentTerms = documents.map((doc) => ({
-		uri: doc.uri,
-		terms: extractTermFrequencies(doc.content),
-	}))
+	const documentTerms = await Promise.all(
+		documents.map(async (doc) => ({
+			uri: doc.uri,
+			terms: await extractTermFrequencies(doc.content),
+		}))
+	)
 
 	// Calculate IDF scores
 	const idf = calculateIDF(
@@ -197,10 +203,13 @@ export function calculateCosineSimilarity(
 }
 
 /**
- * Process query into TF-IDF vector
+ * Process query into TF-IDF vector (async - uses StarCoder2)
  */
-export function processQuery(query: string, idf: Map<string, number>): Map<string, number> {
-	const terms = tokenize(query)
+export async function processQuery(
+	query: string,
+	idf: Map<string, number>
+): Promise<Map<string, number>> {
+	const terms = await tokenize(query)
 	return processQueryWithTokens(terms, idf)
 }
 
@@ -234,7 +243,7 @@ export interface StorageSearchResult {
  * Search documents using SQL-based storage (Memory optimization)
  * Uses pre-computed magnitude - does not need to load all document vectors
  */
-export function searchDocumentsFromStorage(
+export async function searchDocumentsFromStorage(
 	query: string,
 	candidates: StorageSearchResult[],
 	idf: Map<string, number>,
@@ -242,11 +251,11 @@ export function searchDocumentsFromStorage(
 		limit?: number
 		minScore?: number
 	} = {}
-): Array<{ uri: string; score: number; matchedTerms: string[] }> {
+): Promise<Array<{ uri: string; score: number; matchedTerms: string[] }>> {
 	const { limit = 10, minScore = 0 } = options
 
 	// Get query tokens (cached)
-	const queryTokens = getCachedQueryTokens(query)
+	const queryTokens = await getCachedQueryTokens(query)
 
 	// Build query vector
 	const queryVector = new Map<string, number>()
@@ -325,27 +334,27 @@ export function searchDocumentsFromStorage(
 }
 
 /**
- * Get query tokens (exported for SQL-based search)
+ * Get query tokens (exported for SQL-based search) - async
  */
-export function getQueryTokens(query: string): string[] {
+export async function getQueryTokens(query: string): Promise<string[]> {
 	return getCachedQueryTokens(query)
 }
 
 /**
- * Search documents using TF-IDF and cosine similarity
+ * Search documents using TF-IDF and cosine similarity (async - uses StarCoder2)
  */
-export function searchDocuments(
+export async function searchDocuments(
 	query: string,
 	index: SearchIndex,
 	options: {
 		limit?: number
 		minScore?: number
 	} = {}
-): Array<{ uri: string; score: number; matchedTerms: string[] }> {
+): Promise<Array<{ uri: string; score: number; matchedTerms: string[] }>> {
 	const { limit = 10, minScore = 0 } = options
 
 	// Process query with cached tokens (CPU optimization)
-	const queryTokens = getCachedQueryTokens(query)
+	const queryTokens = await getCachedQueryTokens(query)
 	const queryVector = processQueryWithTokens(queryTokens, index.idf)
 
 	// Calculate similarity only for documents with matching terms (CPU optimization)

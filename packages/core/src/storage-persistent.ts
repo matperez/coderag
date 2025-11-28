@@ -749,7 +749,7 @@ export class PersistentStorage implements Storage {
 			filePath: string
 			content: string
 		}>,
-		tokenize: (content: string) => string[]
+		tokenize: (content: string) => Promise<string[]>
 	): Promise<Set<string>> {
 		if (documents.length === 0) {
 			return new Set()
@@ -772,8 +772,8 @@ export class PersistentStorage implements Storage {
 				const fileId = fileIdMap.get(doc.filePath)
 				if (!fileId) continue
 
-				// Tokenize and calculate term frequencies
-				const tokens = tokenize(doc.content)
+				// Tokenize and calculate term frequencies (async - StarCoder2)
+				const tokens = await tokenize(doc.content)
 				const termFreq = new Map<string, number>()
 				for (const token of tokens) {
 					termFreq.set(token, (termFreq.get(token) || 0) + 1)

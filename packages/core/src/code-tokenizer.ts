@@ -26,6 +26,7 @@ export interface TokenizerOptions {
 export class CodeTokenizer {
 	private tokenizer: any
 	private initialized = false
+	private initPromise: Promise<void> | null = null
 	private modelPath: string
 
 	constructor(options: TokenizerOptions = {}) {
@@ -41,6 +42,16 @@ export class CodeTokenizer {
 			return
 		}
 
+		// Prevent multiple concurrent initializations
+		if (this.initPromise) {
+			return this.initPromise
+		}
+
+		this.initPromise = this.doInitialize()
+		return this.initPromise
+	}
+
+	private async doInitialize(): Promise<void> {
 		try {
 			console.error('[INFO] Loading StarCoder2 tokenizer (4.7MB, one-time download)...')
 			const startTime = Date.now()
@@ -52,6 +63,7 @@ export class CodeTokenizer {
 
 			this.initialized = true
 		} catch (error) {
+			this.initPromise = null
 			throw new Error(`Failed to load tokenizer: ${error.message}`)
 		}
 	}
@@ -68,40 +80,25 @@ export class CodeTokenizer {
 			return []
 		}
 
-		try {
-			// Encode with StarCoder2
-			const encoded = await this.tokenizer(code)
-			const inputIds = encoded.input_ids.tolist()[0]
+		// Encode with StarCoder2
+		const encoded = await this.tokenizer(code)
+		const inputIds = encoded.input_ids.tolist()[0]
 
-			// Decode each token ID to get the actual tokens
-			const tokens: string[] = []
-			for (const id of inputIds) {
-				const token = await this.tokenizer.decode([id], {
-					skip_special_tokens: true,
-				})
+		// Decode each token ID to get the actual tokens
+		const tokens: string[] = []
+		for (const id of inputIds) {
+			const token = await this.tokenizer.decode([id], {
+				skip_special_tokens: true,
+			})
 
-				const cleaned = token.trim().toLowerCase()
-				if (cleaned.length > 0) {
-					tokens.push(cleaned)
-				}
+			const cleaned = token.trim().toLowerCase()
+			// Filter: keep tokens with length > 1 (skip single chars and empty)
+			if (cleaned.length > 1) {
+				tokens.push(cleaned)
 			}
-
-			return tokens
-		} catch (error) {
-			console.error('[ERROR] Tokenization failed:', error)
-			return this.fallbackTokenize(code)
 		}
-	}
 
-	/**
-	 * Fallback to simple tokenization if StarCoder2 fails
-	 */
-	private fallbackTokenize(code: string): string[] {
-		// Simple regex-based tokenization as fallback
-		return code
-			.toLowerCase()
-			.split(/[\s\W]+/)
-			.filter((w) => w.length > 2)
+		return tokens
 	}
 
 	/**
@@ -126,72 +123,40 @@ export class CodeTokenizer {
 	}
 }
 
+// Singleton instance for global use
+let globalTokenizer: CodeTokenizer | null = null
+
 /**
- * Create and initialize a code tokenizer
+ * Get or create the global tokenizer instance
  */
-export async function createCodeTokenizer(options?: TokenizerOptions): Promise<CodeTokenizer> {
-	const tokenizer = new CodeTokenizer(options)
+export function getTokenizer(): CodeTokenizer {
+	if (!globalTokenizer) {
+		globalTokenizer = new CodeTokenizer()
+	}
+	return globalTokenizer
+}
+
+/**
+ * Tokenize code using StarCoder2 (async)
+ * This is the main entry point for tokenization
+ */
+export async function tokenize(code: string): Promise<string[]> {
+	const tokenizer = getTokenizer()
+	return tokenizer.tokenize(code)
+}
+
+/**
+ * Extract terms with frequency counts using StarCoder2 (async)
+ */
+export async function extractTerms(code: string): Promise<Map<string, number>> {
+	const tokenizer = getTokenizer()
+	return tokenizer.extractTerms(code)
+}
+
+/**
+ * Initialize the global tokenizer (call early to avoid delay on first tokenize)
+ */
+export async function initializeTokenizer(): Promise<void> {
+	const tokenizer = getTokenizer()
 	await tokenizer.initialize()
-	return tokenizer
-}
-
-/**
- * Simple code-aware tokenization (lightweight fallback, no dependencies)
- *
- * Handles:
- * - camelCase → ["camel", "case", "camelcase"]
- * - snake_case → ["snake", "case", "snake_case"]
- * - Identifiers
- * - String contents
- *
- * Returns array with duplicates (for frequency counting)
- */
-export function simpleCodeTokenize(code: string): string[] {
-	const terms: string[] = []
-
-	// 1. Handle camelCase and PascalCase
-	const camelCaseMatches = code.matchAll(/[a-z]+|[A-Z][a-z]+/g)
-	for (const match of camelCaseMatches) {
-		terms.push(match[0].toLowerCase())
-	}
-
-	// 2. Handle snake_case
-	const snakeCaseMatches = code.matchAll(/[a-z]+(?:_[a-z]+)*/g)
-	for (const match of snakeCaseMatches) {
-		const word = match[0]
-		terms.push(word.toLowerCase())
-		terms.push(...word.split('_'))
-	}
-
-	// 3. Extract identifiers
-	const identifierMatches = code.matchAll(/\b[a-zA-Z_][a-zA-Z0-9_]*\b/g)
-	for (const match of identifierMatches) {
-		terms.push(match[0].toLowerCase())
-	}
-
-	// 4. Extract string literal contents
-	const stringMatches = code.matchAll(/"([^"]*)"|'([^']*)'/g)
-	for (const match of stringMatches) {
-		const content = match[1] || match[2]
-		if (content) {
-			terms.push(...content.toLowerCase().split(/\s+/))
-		}
-	}
-
-	// Return with duplicates (don't deduplicate here, for frequency counting)
-	return terms.filter((t) => t.length > 1)
-}
-
-/**
- * Extract terms from code with frequency counts (simple version)
- */
-export function simpleExtractTerms(code: string): Map<string, number> {
-	const tokens = simpleCodeTokenize(code)
-	const termFreq = new Map<string, number>()
-
-	for (const token of tokens) {
-		termFreq.set(token, (termFreq.get(token) || 0) + 1)
-	}
-
-	return termFreq
 }
