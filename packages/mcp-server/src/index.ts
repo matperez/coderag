@@ -172,28 +172,36 @@ When to use:
 					)
 				}
 
-				const indexedCount = await indexer.getIndexedCount()
-				if (indexedCount === 0) {
-					return text(
-						`📭 **Codebase Not Indexed**\n\nThe codebase has not been indexed yet. The MCP server should automatically index on startup.\n\n**If this persists:**\n- Restart the MCP server\n- Check the server logs for errors`
-					)
+				// Perform search (semantic if available, otherwise keyword)
+				let results
+				try {
+					results = isSemanticSearch
+						? await semanticSearch(query, indexer, {
+								limit,
+								fileExtensions: file_extensions,
+								pathFilter: path_filter,
+								excludePaths: exclude_paths,
+							})
+						: await indexer.search(query, {
+								limit,
+								includeContent: include_content,
+								fileExtensions: file_extensions,
+								pathFilter: path_filter,
+								excludePaths: exclude_paths,
+							})
+				} catch (searchError) {
+					// Index not ready yet (background indexing hasn't completed)
+					const errorMsg = (searchError as Error).message
+					if (errorMsg.includes('not indexed')) {
+						return text(
+							`⏳ **Indexing Starting...**\n\nThe codebase index is being built in the background.\n\n**Status:** Preparing to index files...\n\n💡 **Tip:** Try your search again in a few seconds.`
+						)
+					}
+					throw searchError
 				}
 
-				// Perform search (semantic if available, otherwise keyword)
-				const results = isSemanticSearch
-					? await semanticSearch(query, indexer, {
-							limit,
-							fileExtensions: file_extensions,
-							pathFilter: path_filter,
-							excludePaths: exclude_paths,
-						})
-					: await indexer.search(query, {
-							limit,
-							includeContent: include_content,
-							fileExtensions: file_extensions,
-							pathFilter: path_filter,
-							excludePaths: exclude_paths,
-						})
+				// Get indexed count for display
+				const indexedCount = await indexer.getIndexedCount()
 
 				if (results.length === 0) {
 					return text(
