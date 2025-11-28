@@ -120,6 +120,9 @@ export function loadGitignore(codebaseRoot: string): Ignore {
 		'*.log',
 		'tmp',
 		'temp',
+		// Coderag storage folders (prevent scanning own index)
+		'.codebase-search',
+		'.coderag',
 	])
 
 	const gitignorePath = path.join(codebaseRoot, '.gitignore')

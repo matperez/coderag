@@ -4,6 +4,7 @@
 
 import fs from 'node:fs/promises'
 import path from 'node:path'
+import { getCoderagDataDir } from './db/client.js'
 import type { EmbeddingProvider } from './embeddings.js'
 import { IncrementalTFIDF, type IncrementalUpdate } from './incremental-tfidf.js'
 import { createCacheKey, LRUCache } from './search-cache.js'
@@ -92,7 +93,9 @@ export class CodebaseIndexer {
 
 		// Initialize vector storage if embedding provider is available
 		if (this.embeddingProvider) {
-			const vectorDbPath = path.join(this.codebaseRoot, '.codebase-search', 'vectors.lance')
+			// Use global ~/.coderag/projects/<hash>/ directory for vector storage
+			const dataDir = getCoderagDataDir(this.codebaseRoot)
+			const vectorDbPath = path.join(dataDir, 'vectors.lance')
 
 			this.vectorStorage = new VectorStorage({
 				dimensions: this.embeddingProvider.dimensions,

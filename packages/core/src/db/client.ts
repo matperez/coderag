@@ -2,7 +2,9 @@
  * Database client setup
  */
 
+import crypto from 'node:crypto'
 import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 import Database from 'better-sqlite3'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
@@ -20,17 +22,62 @@ export interface DbInstance {
 }
 
 /**
+ * Get the global coderag data directory
+ * Uses ~/.coderag/projects/<hash>/ for persistent storage
+ */
+export function getCoderagDataDir(codebaseRoot: string): string {
+	// Normalize the path and create a stable hash
+	const normalizedPath = path.resolve(codebaseRoot)
+	const hash = crypto.createHash('sha256').update(normalizedPath).digest('hex').substring(0, 16)
+
+	// Use ~/.coderag/projects/<hash>/
+	const homeDir = os.homedir()
+	return path.join(homeDir, '.coderag', 'projects', hash)
+}
+
+/**
+ * Project metadata stored alongside the database
+ */
+export interface ProjectMetadata {
+	path: string
+	name: string
+	createdAt: string
+	lastAccessedAt: string
+}
+
+/**
+ * Write project metadata to help identify which project a database belongs to
+ */
+function writeProjectMetadata(dataDir: string, codebaseRoot: string): void {
+	const metadataPath = path.join(dataDir, 'metadata.json')
+	const metadata: ProjectMetadata = {
+		path: path.resolve(codebaseRoot),
+		name: path.basename(codebaseRoot),
+		createdAt: fs.existsSync(metadataPath)
+			? JSON.parse(fs.readFileSync(metadataPath, 'utf8')).createdAt
+			: new Date().toISOString(),
+		lastAccessedAt: new Date().toISOString(),
+	}
+	fs.writeFileSync(metadataPath, JSON.stringify(metadata, null, 2))
+}
+
+/**
  * Create database client
  */
 export function createDb(config: DbConfig = {}): DbInstance {
 	const codebaseRoot = config.codebaseRoot || process.cwd()
-	const dbDir = path.join(codebaseRoot, '.codebase-search')
+
+	// Use global ~/.coderag/projects/<hash>/ directory
+	const dbDir = getCoderagDataDir(codebaseRoot)
 	const dbPath = config.dbPath || path.join(dbDir, 'index.db')
 
 	// Ensure database directory exists
 	if (!fs.existsSync(dbDir)) {
 		fs.mkdirSync(dbDir, { recursive: true })
 	}
+
+	// Write project metadata for identification
+	writeProjectMetadata(dbDir, codebaseRoot)
 
 	// Create SQLite connection
 	const sqlite = new Database(dbPath)

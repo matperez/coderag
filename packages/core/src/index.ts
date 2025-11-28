@@ -9,6 +9,7 @@ export {
 	chunkCodeByAST,
 	chunkCodeByASTSimple,
 } from './ast-chunking.js'
+export { getCoderagDataDir, type ProjectMetadata } from './db/client.js'
 export {
 	chunkText,
 	composeProviders,
