@@ -876,9 +876,18 @@ export class CodebaseIndexer {
 			fileExtensions?: string[]
 			pathFilter?: string
 			excludePaths?: string[]
+			// Snippet options
+			contextLines?: number // Lines of context around each match (default: 3)
+			maxSnippetChars?: number // Max chars per file snippet (default: 2000)
+			maxSnippetBlocks?: number // Max code blocks per file (default: 4)
 		} = {}
 	): Promise<SearchResult[]> {
 		const { limit = 10, includeContent = true } = options
+		const snippetOptions = {
+			contextLines: options.contextLines,
+			maxChars: options.maxSnippetChars,
+			maxBlocks: options.maxSnippetBlocks,
+		}
 
 		// Create cache key from query and options
 		const cacheKey = createCacheKey(query, {
@@ -886,6 +895,7 @@ export class CodebaseIndexer {
 			fileExtensions: options.fileExtensions,
 			pathFilter: options.pathFilter,
 			excludePaths: options.excludePaths,
+			...snippetOptions,
 		})
 
 		// Check cache first
@@ -954,7 +964,11 @@ export class CodebaseIndexer {
 			}
 
 			if (includeContent) {
-				searchResult.snippet = this.extractSnippet(file.content, result.matchedTerms)
+				searchResult.snippet = this.extractSnippet(
+					file.content,
+					result.matchedTerms,
+					snippetOptions
+				)
 			}
 
 			searchResults.push(searchResult)
@@ -969,30 +983,109 @@ export class CodebaseIndexer {
 	}
 
 	/**
-	 * Extract a snippet from content around matched terms
+	 * Extract code block snippets from content around matched terms
+	 *
+	 * Returns the most relevant code blocks (not just lines) with context.
+	 * Blocks are ranked by term density (more matched terms = higher score).
 	 */
-	private extractSnippet(content: string, matchedTerms: string[]): string {
+	private extractSnippet(
+		content: string,
+		matchedTerms: string[],
+		options: { contextLines?: number; maxChars?: number; maxBlocks?: number } = {}
+	): string {
+		const { contextLines = 3, maxChars = 2000, maxBlocks = 4 } = options
 		const lines = content.split('\n')
-		const matchedLines: Array<{ lineNum: number; line: string }> = []
 
-		// Find lines containing matched terms
+		// Step 1: Find all lines with matches and score them
+		const matchedLineInfos: Array<{
+			lineNum: number
+			score: number
+			matchedTerms: string[]
+		}> = []
+
 		for (let i = 0; i < lines.length; i++) {
 			const lineLower = lines[i].toLowerCase()
-			if (matchedTerms.some((term) => lineLower.includes(term))) {
-				matchedLines.push({ lineNum: i + 1, line: lines[i].trim() })
-				if (matchedLines.length >= 3) break // Max 3 lines
+			const termsInLine = matchedTerms.filter((term) => lineLower.includes(term.toLowerCase()))
+
+			if (termsInLine.length > 0) {
+				matchedLineInfos.push({
+					lineNum: i,
+					score: termsInLine.length,
+					matchedTerms: termsInLine,
+				})
 			}
 		}
 
-		if (matchedLines.length === 0) {
+		if (matchedLineInfos.length === 0) {
 			// Return first few lines if no matches found
-			return lines
-				.slice(0, 3)
-				.map((line) => line.trim())
-				.join('\n')
+			return lines.slice(0, 5).join('\n')
 		}
 
-		return matchedLines.map((m) => `${m.lineNum}: ${m.line}`).join('\n')
+		// Step 2: Expand each matched line to a block with context, then merge overlapping blocks
+		interface Block {
+			start: number
+			end: number
+			score: number
+			matchedTerms: Set<string>
+		}
+
+		const blocks: Block[] = []
+
+		for (const info of matchedLineInfos) {
+			const start = Math.max(0, info.lineNum - contextLines)
+			const end = Math.min(lines.length - 1, info.lineNum + contextLines)
+
+			// Try to merge with existing block if overlapping
+			let merged = false
+			for (const block of blocks) {
+				if (start <= block.end + 1 && end >= block.start - 1) {
+					// Overlapping or adjacent - merge
+					block.start = Math.min(block.start, start)
+					block.end = Math.max(block.end, end)
+					block.score += info.score
+					for (const term of info.matchedTerms) {
+						block.matchedTerms.add(term)
+					}
+					merged = true
+					break
+				}
+			}
+
+			if (!merged) {
+				blocks.push({
+					start,
+					end,
+					score: info.score,
+					matchedTerms: new Set(info.matchedTerms),
+				})
+			}
+		}
+
+		// Step 3: Sort blocks by score (highest first) and take top N
+		blocks.sort((a, b) => b.score - a.score)
+		const topBlocks = blocks.slice(0, maxBlocks)
+
+		// Sort by position for output (top to bottom in file)
+		topBlocks.sort((a, b) => a.start - b.start)
+
+		// Step 4: Build output with character limit
+		const snippetParts: string[] = []
+		let totalChars = 0
+
+		for (const block of topBlocks) {
+			const blockLines = lines.slice(block.start, block.end + 1)
+			const blockContent = blockLines.map((line, i) => `${block.start + i + 1}: ${line}`).join('\n')
+
+			// Check if adding this block would exceed limit
+			if (totalChars + blockContent.length > maxChars && snippetParts.length > 0) {
+				break
+			}
+
+			snippetParts.push(blockContent)
+			totalChars += blockContent.length
+		}
+
+		return snippetParts.join('\n...\n')
 	}
 
 	/**

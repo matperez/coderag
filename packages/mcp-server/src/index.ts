@@ -149,6 +149,22 @@ When to use:
 					.describe(
 						'Exclude paths containing these patterns (e.g., ["node_modules", ".git", "dist"])'
 					),
+				// Snippet options
+				context_lines: z
+					.number()
+					.default(3)
+					.optional()
+					.describe('Lines of context around each matched line (default: 3)'),
+				max_snippet_chars: z
+					.number()
+					.default(2000)
+					.optional()
+					.describe('Maximum characters per file snippet (default: 2000)'),
+				max_snippet_blocks: z
+					.number()
+					.default(4)
+					.optional()
+					.describe('Maximum code blocks per file (default: 4)'),
 			})
 		)
 		.handler(async ({ input }) => {
@@ -160,6 +176,9 @@ When to use:
 					file_extensions,
 					path_filter,
 					exclude_paths,
+					context_lines = 3,
+					max_snippet_chars = 2000,
+					max_snippet_blocks = 4,
 				} = input
 
 				// Check indexing status
@@ -199,6 +218,9 @@ When to use:
 								fileExtensions: file_extensions,
 								pathFilter: path_filter,
 								excludePaths: exclude_paths,
+								contextLines: context_lines,
+								maxSnippetChars: max_snippet_chars,
+								maxSnippetBlocks: max_snippet_blocks,
 							})
 				} catch (searchError) {
 					// Index not ready yet (background indexing hasn't completed)
