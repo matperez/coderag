@@ -382,6 +382,50 @@ export class PersistentStorage implements Storage {
 	}
 
 	/**
+	 * Get all document vectors in a single batch query (CPU + Memory optimization)
+	 * Avoids N+1 query pattern when loading index from storage
+	 */
+	async getAllDocumentVectors(): Promise<
+		Map<string, Map<string, { tf: number; tfidf: number; rawFreq: number }>>
+	> {
+		const { db } = this.dbInstance
+
+		// Single JOIN query to get all vectors with file paths
+		const results = await db
+			.select({
+				path: schema.files.path,
+				term: schema.documentVectors.term,
+				tf: schema.documentVectors.tf,
+				tfidf: schema.documentVectors.tfidf,
+				rawFreq: schema.documentVectors.rawFreq,
+			})
+			.from(schema.documentVectors)
+			.innerJoin(schema.files, eq(schema.documentVectors.fileId, schema.files.id))
+			.all()
+
+		// Group by file path
+		const allVectors = new Map<
+			string,
+			Map<string, { tf: number; tfidf: number; rawFreq: number }>
+		>()
+
+		for (const row of results) {
+			let fileVectors = allVectors.get(row.path)
+			if (!fileVectors) {
+				fileVectors = new Map()
+				allVectors.set(row.path, fileVectors)
+			}
+			fileVectors.set(row.term, {
+				tf: row.tf,
+				tfidf: row.tfidf,
+				rawFreq: row.rawFreq,
+			})
+		}
+
+		return allVectors
+	}
+
+	/**
 	 * Store metadata
 	 */
 	async setMetadata(key: string, value: string): Promise<void> {

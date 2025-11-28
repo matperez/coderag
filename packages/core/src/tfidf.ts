@@ -5,6 +5,27 @@
 
 import { simpleCodeTokenize } from './code-tokenizer.js'
 
+// Query token cache - avoids re-tokenizing the same query (CPU optimization)
+const queryTokenCache = new Map<string, string[]>()
+const QUERY_CACHE_MAX_SIZE = 100
+
+function getCachedQueryTokens(query: string): string[] {
+	const cached = queryTokenCache.get(query)
+	if (cached) return cached
+
+	// Tokenize and dedupe
+	const tokens = [...new Set(tokenize(query))]
+
+	// LRU-style eviction: remove oldest if full
+	if (queryTokenCache.size >= QUERY_CACHE_MAX_SIZE) {
+		const firstKey = queryTokenCache.keys().next().value
+		if (firstKey) queryTokenCache.delete(firstKey)
+	}
+
+	queryTokenCache.set(query, tokens)
+	return tokens
+}
+
 export interface DocumentVector {
 	uri: string
 	terms: Map<string, number> // term → TF-IDF score
@@ -180,9 +201,16 @@ export function calculateCosineSimilarity(
  */
 export function processQuery(query: string, idf: Map<string, number>): Map<string, number> {
 	const terms = tokenize(query)
+	return processQueryWithTokens(terms, idf)
+}
+
+/**
+ * Process query from pre-tokenized terms (CPU optimization - avoids re-tokenizing)
+ */
+function processQueryWithTokens(tokens: string[], idf: Map<string, number>): Map<string, number> {
 	const queryVector = new Map<string, number>()
 
-	for (const term of terms) {
+	for (const term of tokens) {
 		const idfValue = idf.get(term) || 0
 		if (idfValue > 0) {
 			queryVector.set(term, idfValue)
@@ -205,38 +233,52 @@ export function searchDocuments(
 ): Array<{ uri: string; score: number; matchedTerms: string[] }> {
 	const { limit = 10, minScore = 0 } = options
 
-	// Process query
-	const queryVector = processQuery(query, index.idf)
-	const queryTokens = [...new Set(tokenize(query))]
+	// Process query with cached tokens (CPU optimization)
+	const queryTokens = getCachedQueryTokens(query)
+	const queryVector = processQueryWithTokens(queryTokens, index.idf)
 
-	// Calculate similarity for each document
-	const results = index.documents.map((doc) => {
-		let score = calculateCosineSimilarity(queryVector, doc)
+	// Calculate similarity only for documents with matching terms (CPU optimization)
+	// Use bounded results array to reduce memory and sorting overhead
+	const results: Array<{ uri: string; score: number; matchedTerms: string[] }> = []
+	let minThreshold = minScore // Track minimum score needed to enter top-k
 
-		// Boost for exact term matches
+	for (const doc of index.documents) {
+		// Early skip: check if document has ANY matching terms first
 		const matchedTerms: string[] = []
 		for (const token of queryTokens) {
 			if (doc.rawTerms.has(token)) {
-				score *= 1.5 // Boost exact matches
 				matchedTerms.push(token)
 			}
 		}
+
+		// Skip documents with no matching terms - saves CPU on similarity calculation
+		if (matchedTerms.length === 0) continue
+
+		// Only calculate similarity for documents with matches
+		let score = calculateCosineSimilarity(queryVector, doc)
+
+		// Boost for exact term matches
+		score *= 1.5 ** matchedTerms.length
 
 		// Boost for phrase matches (all terms found)
 		if (matchedTerms.length === queryTokens.length && queryTokens.length > 1) {
 			score *= 2.0
 		}
 
-		return {
-			uri: doc.uri,
-			score,
-			matchedTerms,
-		}
-	})
+		// Early skip if score can't make it into top-k (CPU + Memory optimization)
+		if (score < minThreshold) continue
 
-	// Filter and sort
-	return results
-		.filter((result) => result.score >= minScore)
-		.sort((a, b) => b.score - a.score)
-		.slice(0, limit)
+		// Insert into results maintaining rough order
+		results.push({ uri: doc.uri, score, matchedTerms })
+
+		// If we have more than 2x limit, trim to limit (amortized sorting)
+		if (results.length >= limit * 2) {
+			results.sort((a, b) => b.score - a.score)
+			results.length = limit
+			minThreshold = results[results.length - 1].score
+		}
+	}
+
+	// Final sort and limit
+	return results.sort((a, b) => b.score - a.score).slice(0, limit)
 }

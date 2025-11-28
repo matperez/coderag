@@ -602,13 +602,14 @@ export class CodebaseIndexer {
 				return false
 			}
 
-			// Load all files
-			const files = await this.storage.getAllFiles()
-			if (files.length === 0) {
+			// Load all document vectors in single batch query (CPU + Memory optimization)
+			// This replaces N+1 query pattern with single JOIN query
+			const allVectors = await this.storage.getAllDocumentVectors()
+			if (allVectors.size === 0) {
 				return false
 			}
 
-			// Reconstruct document vectors
+			// Reconstruct document vectors from batch result
 			const documentVectors: Array<{
 				uri: string
 				terms: Map<string, number>
@@ -616,12 +617,7 @@ export class CodebaseIndexer {
 				magnitude: number
 			}> = []
 
-			for (const file of files) {
-				const vectors = await this.storage.getDocumentVectors(file.path)
-				if (!vectors) {
-					continue
-				}
-
+			for (const [filePath, vectors] of allVectors) {
 				// Build terms and rawTerms maps
 				const terms = new Map<string, number>()
 				const rawTerms = new Map<string, number>()
@@ -639,7 +635,7 @@ export class CodebaseIndexer {
 				const magnitude = Math.sqrt(sumSquares)
 
 				documentVectors.push({
-					uri: `file://${file.path}`,
+					uri: `file://${filePath}`,
 					terms,
 					rawTerms,
 					magnitude,
