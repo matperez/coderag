@@ -189,9 +189,9 @@ export const LANGUAGE_REGISTRY: Record<string, LanguageConfig> = {
 			'paragraph',
 			'code', // Code blocks
 			'blockquote',
-			'list',
-			'table',
+			'listItem', // synth-md uses listItem, not list
 			'thematicBreak',
+			// Note: table not yet supported by synth-md
 		],
 		embedded: [
 			{
