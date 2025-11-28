@@ -192,9 +192,18 @@ When to use:
 				} catch (searchError) {
 					// Index not ready yet (background indexing hasn't completed)
 					const errorMsg = (searchError as Error).message
-					if (errorMsg.includes('not indexed')) {
+					if (errorMsg.toLowerCase().includes('not indexed')) {
+						const status = indexer.getStatus()
+						if (status.isIndexing) {
+							const pct = status.progress
+							const progressBar =
+								'█'.repeat(Math.floor(pct / 5)) + '░'.repeat(20 - Math.floor(pct / 5))
+							return text(
+								`⏳ **Indexing In Progress**\n\n**Progress:** ${pct}%\n\`${progressBar}\`\n\n**Files:** ${status.indexedFiles}/${status.totalFiles}\n${status.currentFile ? `**Current:** \`${status.currentFile}\`` : ''}\n\n💡 Try again in a few seconds.`
+							)
+						}
 						return text(
-							`⏳ **Indexing Starting...**\n\nThe codebase index is being built in the background.\n\n**Status:** Preparing to index files...\n\n💡 **Tip:** Try your search again in a few seconds.`
+							`⏳ **Indexing Starting...**\n\nThe codebase index is being built in the background.\n\n💡 **Tip:** Try your search again in a few seconds.`
 						)
 					}
 					throw searchError
@@ -274,26 +283,33 @@ When to use:
 	// Auto-index in background (non-blocking)
 	if (autoIndex) {
 		Logger.info('📚 Starting automatic indexing (background)...')
-		indexer
-			.index({
-				watch: true, // Enable file watching
-				onProgress: (current, total, file) => {
-					if (current % 100 === 0 || current === total) {
-						Logger.info(`Indexing: ${current}/${total} files (${file})`)
+		// Use setImmediate to ensure server is fully ready before indexing starts
+		setImmediate(() => {
+			indexer
+				.index({
+					watch: true, // Enable file watching
+					onProgress: (current, total, file) => {
+						// Log every 10 files or at completion
+						if (current % 10 === 0 || current === total) {
+							const pct = Math.round((current / total) * 100)
+							Logger.info(`Indexing: ${current}/${total} (${pct}%) - ${file}`)
+						}
+					},
+					onFileChange: (event) => {
+						Logger.info(`File ${event.type}: ${event.path}`)
+					},
+				})
+				.then(async () => {
+					Logger.success(`✓ Indexed ${await indexer.getIndexedCount()} files`)
+					Logger.info('👁️  Watching for file changes...')
+				})
+				.catch((error) => {
+					Logger.error('❌ Failed to index codebase:', (error as Error).message)
+					if ((error as Error).stack) {
+						Logger.error((error as Error).stack as string)
 					}
-				},
-				onFileChange: (event) => {
-					Logger.info(`File ${event.type}: ${event.path}`)
-				},
-			})
-			.then(async () => {
-				Logger.success(`✓ Indexed ${await indexer.getIndexedCount()} files`)
-				Logger.info('👁️  Watching for file changes...')
-			})
-			.catch((error) => {
-				Logger.error('Failed to index codebase', error)
-				Logger.info('⚠️  Search will fail until indexed')
-			})
+				})
+		})
 	}
 
 	Logger.info('💡 Press Ctrl+C to stop the server')
