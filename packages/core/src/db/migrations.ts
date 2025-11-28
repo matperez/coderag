@@ -125,4 +125,25 @@ export function runMigrations(sqlite: Database.Database): void {
 
 		console.error('[DB] Migration complete: add_composite_term_index_v1')
 	}
+
+	// Migration 4: Add token_count column for BM25 document length normalization
+	const migration4Hash = 'add_token_count_column_v1'
+	const existingMigration4 = sqlite
+		.prepare('SELECT id FROM __drizzle_migrations WHERE hash = ?')
+		.get(migration4Hash)
+
+	if (!existingMigration4) {
+		console.error('[DB] Running migration: add_token_count_column_v1')
+
+		// Add token_count column with default 0
+		sqlite.exec(`
+      ALTER TABLE files ADD COLUMN token_count INTEGER DEFAULT 0;
+    `)
+
+		sqlite
+			.prepare('INSERT INTO __drizzle_migrations (hash, created_at) VALUES (?, ?)')
+			.run(migration4Hash, Date.now())
+
+		console.error('[DB] Migration complete: add_token_count_column_v1')
+	}
 }

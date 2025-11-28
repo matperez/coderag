@@ -1,12 +1,20 @@
 /**
- * TF-IDF (Term Frequency-Inverse Document Frequency) implementation
+ * BM25 (Best Matching 25) implementation
  * Using StarCoder2 tokenizer for code-aware tokenization
+ *
+ * BM25 improves on TF-IDF with:
+ * 1. Term frequency saturation (k1 parameter) - diminishing returns for repeated terms
+ * 2. Document length normalization (b parameter) - adjusts for document length
  */
 
 import { initializeTokenizer, tokenize as starcoderTokenize } from './code-tokenizer.js'
 
 // Re-export tokenize for external use
 export { initializeTokenizer }
+
+// BM25 parameters (Elasticsearch/Lucene defaults)
+const BM25_K1 = 1.2 // Term frequency saturation (1.2-2.0 typical)
+const BM25_B = 0.75 // Length normalization (0.75 typical, 0 = no normalization, 1 = full normalization)
 
 // Query token cache - avoids re-tokenizing the same query (CPU optimization)
 const queryTokenCache = new Map<string, string[]>()
@@ -233,17 +241,26 @@ function processQueryWithTokens(tokens: string[], idf: Map<string, number>): Map
 
 /**
  * SQL-based search result from storage
- * Uses pre-computed magnitude for memory efficiency
+ * Uses pre-computed magnitude and token count for BM25 scoring
  */
 export interface StorageSearchResult {
 	path: string
 	matchedTerms: Map<string, { tfidf: number; rawFreq: number }>
-	magnitude: number // Pre-computed from files table
+	magnitude: number // Pre-computed from files table (for TF-IDF fallback)
+	tokenCount: number // Document length for BM25 scoring
 }
 
 /**
- * Search documents using SQL-based storage (Memory optimization)
- * Uses pre-computed magnitude - does not need to load all document vectors
+ * Search documents using BM25 scoring (SQL-based storage)
+ *
+ * BM25 formula: score(D,Q) = Σ IDF(qi) * (f(qi,D) * (k1+1)) / (f(qi,D) + k1 * (1 - b + b * |D|/avgdl))
+ *
+ * Where:
+ * - f(qi,D) = raw frequency of term qi in document D
+ * - |D| = document length (token count)
+ * - avgdl = average document length
+ * - k1 = term frequency saturation (default: 1.2)
+ * - b = length normalization (default: 0.75)
  */
 export async function searchDocumentsFromStorage(
 	query: string,
@@ -252,6 +269,7 @@ export async function searchDocumentsFromStorage(
 	options: {
 		limit?: number
 		minScore?: number
+		avgDocLength?: number // Average document length for BM25
 	} = {}
 ): Promise<Array<{ uri: string; score: number; matchedTerms: string[] }>> {
 	const { limit = 10, minScore = 0 } = options
@@ -259,27 +277,21 @@ export async function searchDocumentsFromStorage(
 	// Get query tokens (cached)
 	const queryTokens = await getCachedQueryTokens(query)
 
-	// Build query vector
-	const queryVector = new Map<string, number>()
-	for (const term of queryTokens) {
-		const idfValue = idf.get(term) || 0
-		if (idfValue > 0) {
-			queryVector.set(term, idfValue)
-		}
-	}
-
-	// Calculate query magnitude
-	let queryMagnitudeSquared = 0
-	for (const value of queryVector.values()) {
-		queryMagnitudeSquared += value * value
-	}
-	const queryMagnitude = Math.sqrt(queryMagnitudeSquared)
-
-	if (queryMagnitude === 0) {
+	if (queryTokens.length === 0) {
 		return []
 	}
 
-	// Score each candidate
+	// Calculate average document length if not provided
+	// Fallback to average of candidates (less accurate but works without global stats)
+	let avgDocLength = options.avgDocLength
+	if (!avgDocLength || avgDocLength === 0) {
+		const totalTokens = candidates.reduce((sum, c) => sum + (c.tokenCount || 0), 0)
+		avgDocLength = candidates.length > 0 ? totalTokens / candidates.length : 1
+	}
+	// Ensure avgDocLength is at least 1 to avoid division by zero
+	avgDocLength = Math.max(avgDocLength, 1)
+
+	// Score each candidate using BM25
 	const results: Array<{ uri: string; score: number; matchedTerms: string[] }> = []
 	let minThreshold = minScore
 
@@ -294,37 +306,28 @@ export async function searchDocumentsFromStorage(
 
 		if (matchedTerms.length === 0) continue
 
-		// Calculate dot product using matched terms
-		let dotProduct = 0
-		for (const [term, queryScore] of queryVector.entries()) {
+		// BM25 scoring
+		const docLen = candidate.tokenCount || 1
+		let score = 0
+
+		for (const term of matchedTerms) {
 			const docData = candidate.matchedTerms.get(term)
-			if (docData) {
-				dotProduct += queryScore * docData.tfidf
-			}
-		}
+			if (!docData) continue
 
-		// Use pre-computed magnitude from files table (Memory optimization)
-		// No need to load all document vectors just for magnitude calculation
-		const docMagnitude = candidate.magnitude
+			const termFreq = docData.rawFreq
+			const termIdf = idf.get(term) || 0
 
-		if (docMagnitude === 0) continue
-
-		// Cosine similarity
-		let score = dotProduct / (queryMagnitude * docMagnitude)
-
-		// Boost for exact term matches (logarithmic to prevent score explosion)
-		score *= 1 + Math.log(1 + matchedTerms.length)
-
-		// Boost for phrase matches
-		if (matchedTerms.length === queryTokens.length && queryTokens.length > 1) {
-			score *= 1.5 // Reduced from 2.0 to prevent over-boosting
+			// BM25 term score: IDF * (tf * (k1+1)) / (tf + k1 * (1 - b + b * docLen/avgdl))
+			const numerator = termFreq * (BM25_K1 + 1)
+			const denominator = termFreq + BM25_K1 * (1 - BM25_B + (BM25_B * docLen) / avgDocLength)
+			score += termIdf * (numerator / denominator)
 		}
 
 		if (score < minThreshold) continue
 
 		results.push({ uri: `file://${candidate.path}`, score, matchedTerms })
 
-		// Bounded results
+		// Bounded results (optimization for large candidate sets)
 		if (results.length >= limit * 2) {
 			results.sort((a, b) => b.score - a.score)
 			results.length = limit
@@ -343,7 +346,10 @@ export async function getQueryTokens(query: string): Promise<string[]> {
 }
 
 /**
- * Search documents using TF-IDF and cosine similarity (async - uses StarCoder2)
+ * Search documents using BM25 scoring (in-memory index)
+ *
+ * For in-memory search, document length is calculated from rawTerms.
+ * Average document length is calculated from all documents in the index.
  */
 export async function searchDocuments(
 	query: string,
@@ -357,15 +363,26 @@ export async function searchDocuments(
 
 	// Process query with cached tokens (CPU optimization)
 	const queryTokens = await getCachedQueryTokens(query)
-	const queryVector = processQueryWithTokens(queryTokens, index.idf)
 
-	// Calculate similarity only for documents with matching terms (CPU optimization)
-	// Use bounded results array to reduce memory and sorting overhead
+	if (queryTokens.length === 0) {
+		return []
+	}
+
+	// Calculate average document length from index
+	let totalTokens = 0
+	for (const doc of index.documents) {
+		for (const freq of doc.rawTerms.values()) {
+			totalTokens += freq
+		}
+	}
+	const avgDocLength = index.documents.length > 0 ? totalTokens / index.documents.length : 1
+
+	// Score documents using BM25
 	const results: Array<{ uri: string; score: number; matchedTerms: string[] }> = []
-	let minThreshold = minScore // Track minimum score needed to enter top-k
+	let minThreshold = minScore
 
 	for (const doc of index.documents) {
-		// Early skip: check if document has ANY matching terms first
+		// Get matched terms
 		const matchedTerms: string[] = []
 		for (const token of queryTokens) {
 			if (doc.rawTerms.has(token)) {
@@ -373,28 +390,32 @@ export async function searchDocuments(
 			}
 		}
 
-		// Skip documents with no matching terms - saves CPU on similarity calculation
 		if (matchedTerms.length === 0) continue
 
-		// Only calculate similarity for documents with matches
-		let score = calculateCosineSimilarity(queryVector, doc)
+		// Calculate document length (sum of all term frequencies)
+		let docLen = 0
+		for (const freq of doc.rawTerms.values()) {
+			docLen += freq
+		}
+		docLen = Math.max(docLen, 1) // Avoid division by zero
 
-		// Boost for exact term matches (logarithmic to prevent score explosion)
-		// Old: 1.5^10 = 57x, New: 1 + log(11) ≈ 3.4x
-		score *= 1 + Math.log(1 + matchedTerms.length)
+		// BM25 scoring
+		let score = 0
+		for (const term of matchedTerms) {
+			const termFreq = doc.rawTerms.get(term) || 0
+			const termIdf = index.idf.get(term) || 0
 
-		// Boost for phrase matches (all terms found)
-		if (matchedTerms.length === queryTokens.length && queryTokens.length > 1) {
-			score *= 1.5 // Reduced from 2.0 to prevent over-boosting
+			// BM25 term score
+			const numerator = termFreq * (BM25_K1 + 1)
+			const denominator = termFreq + BM25_K1 * (1 - BM25_B + (BM25_B * docLen) / avgDocLength)
+			score += termIdf * (numerator / denominator)
 		}
 
-		// Early skip if score can't make it into top-k (CPU + Memory optimization)
 		if (score < minThreshold) continue
 
-		// Insert into results maintaining rough order
 		results.push({ uri: doc.uri, score, matchedTerms })
 
-		// If we have more than 2x limit, trim to limit (amortized sorting)
+		// Bounded results (optimization)
 		if (results.length >= limit * 2) {
 			results.sort((a, b) => b.score - a.score)
 			results.length = limit
@@ -402,6 +423,5 @@ export async function searchDocuments(
 		}
 	}
 
-	// Final sort and limit
 	return results.sort((a, b) => b.score - a.score).slice(0, limit)
 }

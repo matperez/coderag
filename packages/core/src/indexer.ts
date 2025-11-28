@@ -270,9 +270,13 @@ export class CodebaseIndexer {
 		// Step 6: Update pre-computed magnitudes (for cosine similarity search)
 		console.error('[INFO] Updating file magnitudes...')
 		await persistentStorage.updateFileMagnitudes()
+
+		// Step 7: Update average document length (for BM25)
+		console.error('[INFO] Updating average document length...')
+		await persistentStorage.updateAverageDocLength()
 		this.status.progress = 95
 
-		// Step 7: Invalidate search cache
+		// Step 8: Invalidate search cache
 		this.searchCache.invalidate()
 		console.error('[INFO] Search cache invalidated')
 
@@ -830,7 +834,7 @@ export class CodebaseIndexer {
 				})
 			}
 
-			return { filePath, terms }
+			return { filePath, terms, tokenCount: totalTerms }
 		})
 
 		// Use batch operation (PersistentStorage specific)
@@ -848,6 +852,10 @@ export class CodebaseIndexer {
 		// Update pre-computed magnitudes for cosine similarity search
 		console.error('[INFO] Computing file magnitudes...')
 		await persistentStorage.updateFileMagnitudes()
+
+		// Update average document length for BM25
+		console.error('[INFO] Computing average document length...')
+		await persistentStorage.updateAverageDocLength()
 	}
 
 	/**
@@ -893,12 +901,13 @@ export class CodebaseIndexer {
 		let results: Array<{ uri: string; score: number; matchedTerms: string[] }>
 
 		if (this.lowMemoryMode && this.storage instanceof PersistentStorage) {
-			// SQL-based search - doesn't require loading index to memory
+			// SQL-based search with BM25 scoring - doesn't require loading index to memory
 			const queryTokens = await getQueryTokens(query)
 			const candidates = await this.storage.searchByTerms(queryTokens, { limit: limit * 3 })
 			const idf = await this.storage.getIdfScoresForTerms(queryTokens)
-			results = await searchDocumentsFromStorage(query, candidates, idf, { limit })
-			console.error(`[SQL SEARCH] Found ${results.length} results`)
+			const avgDocLength = await this.storage.getAverageDocLength()
+			results = await searchDocumentsFromStorage(query, candidates, idf, { limit, avgDocLength })
+			console.error(`[BM25 SEARCH] Found ${results.length} results`)
 		} else {
 			// In-memory search (faster but uses more memory)
 			if (!this.searchIndex) {

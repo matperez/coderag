@@ -20,6 +20,7 @@ export const files = sqliteTable(
 		language: text('language'),
 		indexedAt: integer('indexed_at').notNull(), // Unix timestamp
 		magnitude: real('magnitude').default(0), // Pre-computed TF-IDF vector magnitude for cosine similarity
+		tokenCount: integer('token_count').default(0), // Total tokens in document (for BM25 length normalization)
 	},
 	(table) => ({
 		pathIdx: index('files_path_idx').on(table.path),

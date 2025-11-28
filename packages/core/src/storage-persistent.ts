@@ -226,6 +226,7 @@ export class PersistentStorage implements Storage {
 		documents: Array<{
 			filePath: string
 			terms: Map<string, { tf: number; tfidf: number; rawFreq: number }>
+			tokenCount?: number // For BM25 document length normalization
 		}>
 	): Promise<void> {
 		if (documents.length === 0) {
@@ -285,11 +286,19 @@ export class PersistentStorage implements Storage {
 				rawFreq: number
 			}> = []
 
+			// Track token counts for BM25
+			const tokenCountUpdates: Array<{ fileId: number; tokenCount: number }> = []
+
 			for (const doc of documents) {
 				const fileId = fileIdMap.get(doc.filePath)
 				if (!fileId) {
 					console.error(`[WARN] File not found in database: ${doc.filePath}`)
 					continue
+				}
+
+				// Track token count for BM25 document length normalization
+				if (doc.tokenCount !== undefined) {
+					tokenCountUpdates.push({ fileId, tokenCount: doc.tokenCount })
 				}
 
 				for (const [term, scores] of doc.terms.entries()) {
@@ -301,6 +310,11 @@ export class PersistentStorage implements Storage {
 						rawFreq: scores.rawFreq,
 					})
 				}
+			}
+
+			// Update token counts for BM25 (using raw SQL to work around drizzle type inference)
+			for (const { fileId, tokenCount } of tokenCountUpdates) {
+				sqlite.exec(`UPDATE files SET token_count = ${tokenCount} WHERE id = ${fileId}`)
 			}
 
 			// Insert in chunks to avoid SQLite variable limits (5 fields per row = 199 rows max)
@@ -448,6 +462,7 @@ export class PersistentStorage implements Storage {
 			path: string
 			matchedTerms: Map<string, { tfidf: number; rawFreq: number }>
 			magnitude: number
+			tokenCount: number // For BM25 document length normalization
 		}>
 	> {
 		if (queryTerms.length === 0) {
@@ -457,13 +472,14 @@ export class PersistentStorage implements Storage {
 		const { db } = this.dbInstance
 		const { limit = 100 } = options
 
-		// Step 1: Find file IDs that contain any query term, with pre-computed magnitude
+		// Step 1: Find file IDs that contain any query term, with pre-computed magnitude and token count
 		// This is the key optimization - we get magnitude from files table, not from loading all vectors
 		const matchingFiles = await db
 			.select({
 				fileId: schema.documentVectors.fileId,
 				path: schema.files.path,
 				magnitude: schema.files.magnitude,
+				tokenCount: schema.files.tokenCount,
 				matchCount: sql<number>`COUNT(DISTINCT ${schema.documentVectors.term})`,
 			})
 			.from(schema.documentVectors)
@@ -504,22 +520,24 @@ export class PersistentStorage implements Storage {
 			)
 			.all()
 
-		// Build result map with pre-computed magnitude
+		// Build result map with pre-computed magnitude and token count
 		const resultMap = new Map<
 			number,
 			{
 				path: string
 				matchedTerms: Map<string, { tfidf: number; rawFreq: number }>
 				magnitude: number
+				tokenCount: number
 			}
 		>()
 
-		// Initialize result entries with magnitude from files table
+		// Initialize result entries with magnitude and token count from files table
 		for (const f of matchingFiles) {
 			resultMap.set(f.fileId, {
 				path: f.path,
 				matchedTerms: new Map(),
 				magnitude: f.magnitude ?? 0,
+				tokenCount: f.tokenCount ?? 0,
 			})
 		}
 
@@ -661,6 +679,52 @@ export class PersistentStorage implements Storage {
 			.get()
 
 		return result?.value || null
+	}
+
+	/**
+	 * Get average document length (token count) for BM25 scoring
+	 * Returns cached value from metadata if available, otherwise calculates from files table
+	 */
+	async getAverageDocLength(): Promise<number> {
+		// Try to get cached value first
+		const cached = await this.getMetadata('avgDocLength')
+		if (cached) {
+			return parseFloat(cached)
+		}
+
+		// Calculate from files table
+		const { db } = this.dbInstance
+		const result = await db
+			.select({
+				avgLen: sql<number>`AVG(COALESCE(${schema.files.tokenCount}, 0))`,
+			})
+			.from(schema.files)
+			.get()
+
+		const avgLen = result?.avgLen || 0
+
+		// Cache the result
+		await this.setMetadata('avgDocLength', avgLen.toString())
+
+		return avgLen
+	}
+
+	/**
+	 * Update average document length in metadata (call after indexing)
+	 */
+	async updateAverageDocLength(): Promise<number> {
+		const { db } = this.dbInstance
+		const result = await db
+			.select({
+				avgLen: sql<number>`AVG(COALESCE(${schema.files.tokenCount}, 0))`,
+			})
+			.from(schema.files)
+			.get()
+
+		const avgLen = result?.avgLen || 0
+		await this.setMetadata('avgDocLength', avgLen.toString())
+
+		return avgLen
 	}
 
 	/**
@@ -809,6 +873,9 @@ export class PersistentStorage implements Storage {
 				for (const term of termFreq.keys()) {
 					affectedTerms.add(term)
 				}
+
+				// Update token count for BM25 (using raw SQL to work around drizzle type inference)
+				sqlite.exec(`UPDATE files SET token_count = ${totalTerms} WHERE id = ${fileId}`)
 
 				// Delete existing vectors for this file
 				await db.delete(schema.documentVectors).where(eq(schema.documentVectors.fileId, fileId))
