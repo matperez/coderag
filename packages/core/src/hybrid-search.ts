@@ -28,6 +28,10 @@ export interface HybridSearchResult {
 	readonly matchedTerms?: string[]
 	readonly similarity?: number
 	readonly content?: string
+	// Chunk metadata (when using chunk-level indexing)
+	readonly chunkType?: string
+	readonly startLine?: number
+	readonly endLine?: number
 	readonly language?: string
 }
 
@@ -58,14 +62,44 @@ export async function hybridSearch(
 					minScore: minScore,
 				})
 
-				return vectorResults.map((r) => ({
-					path: r.doc.id.replace('file://', ''),
-					score: r.similarity,
-					method: 'vector' as const,
-					similarity: r.similarity,
-					content: r.doc.metadata.content,
-					language: r.doc.metadata.language,
-				}))
+				return vectorResults.map((r) => {
+					// Handle both chunk:// and file:// formats
+					const id = r.doc.id
+					let path: string
+					let startLine: number | undefined
+					let endLine: number | undefined
+
+					if (id.startsWith('chunk://')) {
+						// chunk://path:startLine-endLine
+						const match = id.match(/^chunk:\/\/(.+):(\d+)-(\d+)$/)
+						if (match) {
+							path = match[1]
+							startLine = parseInt(match[2], 10)
+							endLine = parseInt(match[3], 10)
+						} else {
+							path = id.replace('chunk://', '')
+						}
+					} else {
+						path = id.replace('file://', '')
+					}
+
+					// Extract metadata with type safety
+					const meta = r.doc.metadata
+					const metaStartLine = typeof meta.startLine === 'number' ? meta.startLine : undefined
+					const metaEndLine = typeof meta.endLine === 'number' ? meta.endLine : undefined
+
+					return {
+						path,
+						score: r.similarity,
+						method: 'vector' as const,
+						similarity: r.similarity,
+						content: meta.content,
+						language: meta.language,
+						chunkType: typeof meta.chunkType === 'string' ? meta.chunkType : undefined,
+						startLine: startLine ?? metaStartLine,
+						endLine: endLine ?? metaEndLine,
+					}
+				})
 			}
 
 			// Pure TF-IDF search (skip vector)
@@ -79,6 +113,9 @@ export async function hybridSearch(
 					matchedTerms: r.matchedTerms,
 					content: r.snippet,
 					language: r.language,
+					chunkType: r.chunkType,
+					startLine: r.startLine,
+					endLine: r.endLine,
 				}))
 			}
 
@@ -119,11 +156,15 @@ export async function hybridSearch(
 		matchedTerms: r.matchedTerms,
 		content: r.snippet,
 		language: r.language,
+		chunkType: r.chunkType,
+		startLine: r.startLine,
+		endLine: r.endLine,
 	}))
 }
 
 /**
  * Merge vector and TF-IDF results with weighted scoring
+ * Now handles chunk-level results
  */
 function mergeSearchResults(
 	vectorResults: readonly VectorSearchResult[],
@@ -136,29 +177,61 @@ function mergeSearchResults(
 	const maxVectorScore = Math.max(...vectorResults.map((r) => r.similarity), 0.01)
 	const maxTfidfScore = Math.max(...tfidfResults.map((r) => r.score), 0.01)
 
+	// Helper to create a unique key for chunks
+	const getChunkKey = (path: string, startLine?: number, endLine?: number) =>
+		startLine && endLine ? `${path}:${startLine}-${endLine}` : path
+
 	// Add vector results
 	for (const result of vectorResults) {
-		const path = result.doc.id.replace('file://', '')
-		const normalizedScore = result.similarity / maxVectorScore
+		// Handle both chunk:// and file:// formats
+		const id = result.doc.id
+		let path: string
+		let startLine: number | undefined
+		let endLine: number | undefined
 
-		resultMap.set(path, {
+		if (id.startsWith('chunk://')) {
+			const match = id.match(/^chunk:\/\/(.+):(\d+)-(\d+)$/)
+			if (match) {
+				path = match[1]
+				startLine = parseInt(match[2], 10)
+				endLine = parseInt(match[3], 10)
+			} else {
+				path = id.replace('chunk://', '')
+			}
+		} else {
+			path = id.replace('file://', '')
+		}
+
+		// Extract metadata with type safety
+		const meta = result.doc.metadata
+		const metaStartLine = typeof meta.startLine === 'number' ? meta.startLine : undefined
+		const metaEndLine = typeof meta.endLine === 'number' ? meta.endLine : undefined
+
+		const normalizedScore = result.similarity / maxVectorScore
+		const key = getChunkKey(path, startLine, endLine)
+
+		resultMap.set(key, {
 			path,
 			score: normalizedScore * vectorWeight,
 			method: 'vector',
 			similarity: result.similarity,
-			content: result.doc.metadata.content,
-			language: result.doc.metadata.language,
+			content: meta.content,
+			language: meta.language,
+			chunkType: typeof meta.chunkType === 'string' ? meta.chunkType : undefined,
+			startLine: startLine ?? metaStartLine,
+			endLine: endLine ?? metaEndLine,
 		})
 	}
 
 	// Add/merge TF-IDF results
 	for (const result of tfidfResults) {
 		const normalizedScore = result.score / maxTfidfScore
-		const existing = resultMap.get(result.path)
+		const key = getChunkKey(result.path, result.startLine, result.endLine)
+		const existing = resultMap.get(key)
 
 		if (existing) {
 			// Combine scores (weighted sum) - create new object
-			resultMap.set(result.path, {
+			resultMap.set(key, {
 				path: result.path,
 				score: existing.score + normalizedScore * (1 - vectorWeight),
 				method: 'hybrid' as const,
@@ -166,15 +239,21 @@ function mergeSearchResults(
 				similarity: existing.similarity,
 				content: result.snippet || existing.content,
 				language: result.language || existing.language,
+				chunkType: result.chunkType || existing.chunkType,
+				startLine: result.startLine ?? existing.startLine,
+				endLine: result.endLine ?? existing.endLine,
 			})
 		} else {
-			resultMap.set(result.path, {
+			resultMap.set(key, {
 				path: result.path,
 				score: normalizedScore * (1 - vectorWeight),
 				method: 'tfidf',
 				matchedTerms: result.matchedTerms,
 				content: result.snippet,
 				language: result.language,
+				chunkType: result.chunkType,
+				startLine: result.startLine,
+				endLine: result.endLine,
 			})
 		}
 	}
