@@ -253,55 +253,63 @@ When to use:
 
 				if (results.length === 0) {
 					return text(
-						`🔍 **No Results Found**\n\nNo files matched your search query: "${query}"\n\n**Suggestions:**\n- Try different search terms\n- ${isSemanticSearch ? 'Describe what you are looking for differently' : 'Use more specific keywords'}\n- Check if file filters are too restrictive\n\n**Total files indexed:** ${indexedCount}`
+						`# Search: "${query}" (0 results)\n\nNo matches found. Try different terms or check filters.\nIndexed files: ${indexedCount}`
 					)
 				}
 
-				// Format results
-				const searchMode = isSemanticSearch ? 'Semantic' : 'Keyword'
-				let formattedResults = `# 🔍 ${searchMode} Search Results\n\n**Query:** "${query}"\n**Results:** ${results.length} matching chunks\n\n`
+				// Format results - optimized for LLM consumption (minimal tokens, maximum content)
+				let formattedResults = `# Search: "${query}" (${results.length} results)\n\n`
 
-				for (let i = 0; i < results.length; i++) {
-					const result = results[i] as {
-						path: string
-						score: number
-						language?: string
-						size?: number
-						matchedTerms?: string[]
-						snippet?: string
-						content?: string
-						chunkType?: string
-						startLine?: number
-						endLine?: number
-					}
-
-					// Show file path with line range if available
+				for (const result of results as Array<{
+					path: string
+					score: number
+					language?: string
+					size?: number
+					matchedTerms?: string[]
+					snippet?: string
+					content?: string
+					chunkType?: string
+					startLine?: number
+					endLine?: number
+				}>) {
+					// Build file path with line range
+					let header = result.path
 					if (result.startLine && result.endLine) {
-						formattedResults += `## ${i + 1}. \`${result.path}:${result.startLine}-${result.endLine}\`\n\n`
-					} else {
-						formattedResults += `## ${i + 1}. \`${result.path}\`\n\n`
+						header += `:${result.startLine}-${result.endLine}`
 					}
 
-					formattedResults += `- **Score:** ${result.score.toFixed(4)}\n`
-					if (result.language) {
-						formattedResults += `- **Language:** ${result.language}\n`
-					}
-					if (result.chunkType) {
-						formattedResults += `- **Type:** ${result.chunkType}\n`
-					}
-					if (result.matchedTerms && result.matchedTerms.length > 0) {
-						formattedResults += `- **Matched Terms:** ${result.matchedTerms.join(', ')}\n`
-					}
-
-					// Show content snippet (with line numbers for chunks)
-					if ('snippet' in result && result.snippet) {
-						const lang = result.language || ''
-						formattedResults += `\n**Snippet:**\n\`\`\`${lang}\n${result.snippet}\n\`\`\`\n`
-					} else if ('content' in result && result.content) {
-						formattedResults += `\n**Preview:**\n\`\`\`\n${result.content.substring(0, 500)}${result.content.length > 500 ? '...' : ''}\n\`\`\`\n`
+					// Add embedded indicator for code blocks in markdown/html
+					const isEmbedded =
+						result.chunkType?.startsWith('code') &&
+						(result.language === 'Markdown' || result.language === 'HTML')
+					if (isEmbedded) {
+						// Extract embedded language from snippet if available (e.g., "66: ```typescript")
+						const langMatch = result.snippet?.match(/```(\w+)/)
+						const embeddedLang = langMatch?.[1] || 'code'
+						header += ` [${result.language?.toLowerCase()}→${embeddedLang}]`
 					}
 
-					formattedResults += '\n---\n\n'
+					formattedResults += `## ${header}\n`
+
+					// Show content snippet
+					if (result.snippet) {
+						// Determine language for syntax highlighting
+						let lang = ''
+						if (isEmbedded) {
+							// For embedded code, extract the actual language
+							const langMatch = result.snippet.match(/```(\w+)/)
+							lang = langMatch?.[1] || ''
+						} else {
+							lang = result.language?.toLowerCase() || ''
+						}
+						formattedResults += `\`\`\`${lang}\n${result.snippet}\n\`\`\`\n\n`
+					} else if (result.content) {
+						const preview =
+							result.content.length > 500
+								? `${result.content.substring(0, 500)}...`
+								: result.content
+						formattedResults += `\`\`\`\n${preview}\n\`\`\`\n\n`
+					}
 				}
 
 				return text(formattedResults)
