@@ -170,7 +170,7 @@ export function simpleCodeTokenize(code: string): string[] {
 	}
 
 	// 4. Extract string literal contents
-	const stringMatches = code.matchAll(/"([^"]*)"|'([^"]*)'/g)
+	const stringMatches = code.matchAll(/"([^"]*)"|'([^']*)'/g)
 	for (const match of stringMatches) {
 		const content = match[1] || match[2]
 		if (content) {

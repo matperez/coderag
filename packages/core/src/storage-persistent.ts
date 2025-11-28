@@ -682,6 +682,202 @@ export class PersistentStorage implements Storage {
 	}
 
 	/**
+	 * Rebuild IDF scores from document vectors using SQL (Memory optimization)
+	 * Calculates document frequency for each term and computes IDF
+	 */
+	async rebuildIdfScoresFromVectors(): Promise<void> {
+		const { db, sqlite } = this.dbInstance
+
+		// Get total document count
+		const totalDocs = await this.count()
+		if (totalDocs === 0) {
+			await db.delete(schema.idfScores)
+			return
+		}
+
+		// Calculate document frequency for each term using SQL
+		const dfResults = await db
+			.select({
+				term: schema.documentVectors.term,
+				df: sql<number>`COUNT(DISTINCT ${schema.documentVectors.fileId})`,
+			})
+			.from(schema.documentVectors)
+			.groupBy(schema.documentVectors.term)
+			.all()
+
+		// Clear existing IDF scores and insert new ones
+		sqlite.exec('BEGIN TRANSACTION')
+
+		try {
+			await db.delete(schema.idfScores)
+
+			// Insert in batches
+			const BATCH_SIZE = 300
+			const scores = dfResults.map((row) => ({
+				term: row.term,
+				idf: Math.log(totalDocs / row.df),
+				documentFrequency: row.df,
+			}))
+
+			for (let i = 0; i < scores.length; i += BATCH_SIZE) {
+				const batch = scores.slice(i, i + BATCH_SIZE)
+				if (batch.length > 0) {
+					await db.insert(schema.idfScores).values(batch)
+				}
+			}
+
+			sqlite.exec('COMMIT')
+		} catch (error) {
+			sqlite.exec('ROLLBACK')
+			throw error
+		}
+	}
+
+	/**
+	 * Recalculate TF-IDF scores for all documents using current IDF values (Memory optimization)
+	 * Updates document_vectors.tfidf = document_vectors.tf * idf_scores.idf
+	 */
+	async recalculateTfidfScores(): Promise<void> {
+		const { sqlite } = this.dbInstance
+
+		// Use raw SQL for efficient batch update with JOIN
+		sqlite.exec(`
+			UPDATE document_vectors
+			SET tfidf = tf * COALESCE(
+				(SELECT idf FROM idf_scores WHERE idf_scores.term = document_vectors.term),
+				0
+			)
+		`)
+	}
+
+	/**
+	 * Store document vectors for specific files only (Incremental update)
+	 * More efficient than storeManyDocumentVectors when only few files changed
+	 */
+	async storeDocumentVectorsForFiles(
+		documents: Array<{
+			filePath: string
+			content: string
+		}>,
+		tokenize: (content: string) => string[]
+	): Promise<Set<string>> {
+		if (documents.length === 0) {
+			return new Set()
+		}
+
+		const { db, sqlite } = this.dbInstance
+		const affectedTerms = new Set<string>()
+
+		sqlite.exec('BEGIN TRANSACTION')
+
+		try {
+			// Get file IDs
+			const files = await db.select().from(schema.files).all()
+			const fileIdMap = new Map<string, number>()
+			for (const file of files) {
+				fileIdMap.set(file.path, file.id)
+			}
+
+			for (const doc of documents) {
+				const fileId = fileIdMap.get(doc.filePath)
+				if (!fileId) continue
+
+				// Tokenize and calculate term frequencies
+				const tokens = tokenize(doc.content)
+				const termFreq = new Map<string, number>()
+				for (const token of tokens) {
+					termFreq.set(token, (termFreq.get(token) || 0) + 1)
+				}
+
+				// Calculate TF
+				const totalTerms = tokens.length
+				if (totalTerms === 0) continue
+
+				// Track affected terms
+				for (const term of termFreq.keys()) {
+					affectedTerms.add(term)
+				}
+
+				// Delete existing vectors for this file
+				await db.delete(schema.documentVectors).where(eq(schema.documentVectors.fileId, fileId))
+
+				// Insert new vectors
+				const vectors = Array.from(termFreq.entries()).map(([term, freq]) => ({
+					fileId,
+					term,
+					tf: freq / totalTerms,
+					tfidf: 0, // Will be calculated later
+					rawFreq: freq,
+				}))
+
+				// Insert in batches
+				const BATCH_SIZE = 199
+				for (let i = 0; i < vectors.length; i += BATCH_SIZE) {
+					const batch = vectors.slice(i, i + BATCH_SIZE)
+					if (batch.length > 0) {
+						await db.insert(schema.documentVectors).values(batch)
+					}
+				}
+			}
+
+			sqlite.exec('COMMIT')
+		} catch (error) {
+			sqlite.exec('ROLLBACK')
+			throw error
+		}
+
+		return affectedTerms
+	}
+
+	/**
+	 * Get terms for deleted files (for tracking affected terms)
+	 */
+	async getTermsForFiles(paths: string[]): Promise<Set<string>> {
+		if (paths.length === 0) {
+			return new Set()
+		}
+
+		const { db } = this.dbInstance
+		const terms = new Set<string>()
+
+		// Get file IDs
+		const files = await db
+			.select({ id: schema.files.id })
+			.from(schema.files)
+			.where(
+				sql`${schema.files.path} IN (${sql.join(
+					paths.map((p) => sql`${p}`),
+					sql`, `
+				)})`
+			)
+			.all()
+
+		if (files.length === 0) {
+			return terms
+		}
+
+		const fileIds = files.map((f) => f.id)
+
+		// Get terms for these files
+		const results = await db
+			.select({ term: schema.documentVectors.term })
+			.from(schema.documentVectors)
+			.where(
+				sql`${schema.documentVectors.fileId} IN (${sql.join(
+					fileIds.map((id) => sql`${id}`),
+					sql`, `
+				)})`
+			)
+			.all()
+
+		for (const row of results) {
+			terms.add(row.term)
+		}
+
+		return terms
+	}
+
+	/**
 	 * Close database connection
 	 */
 	close(): void {

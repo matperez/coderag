@@ -15,6 +15,7 @@ import {
 	getQueryTokens,
 	type SearchIndex,
 	searchDocumentsFromStorage,
+	tokenize,
 } from './tfidf.js'
 import {
 	detectLanguage,
@@ -177,7 +178,7 @@ export class CodebaseIndexer {
 
 	/**
 	 * Process incremental changes (add, update, delete files)
-	 * Much faster than full rebuild when only a few files changed
+	 * Uses SQL-based updates - never loads all files into memory
 	 */
 	private async processIncrementalChanges(
 		diff: FileDiff,
@@ -186,22 +187,22 @@ export class CodebaseIndexer {
 	): Promise<void> {
 		const persistentStorage = this.storage as PersistentStorage
 
-		// Step 1: Delete removed files
+		// Step 1: Get terms for deleted files (before deleting, for IDF recalculation)
+		let deletedTerms = new Set<string>()
 		if (diff.deleted.length > 0) {
+			console.error(`[INFO] Getting terms for ${diff.deleted.length} deleted files...`)
+			deletedTerms = await persistentStorage.getTermsForFiles(diff.deleted)
+
 			console.error(`[INFO] Deleting ${diff.deleted.length} removed files...`)
 			await persistentStorage.deleteFiles(diff.deleted)
 		}
 
 		// Step 2: Process added and changed files
 		const filesToProcess = [...diff.added, ...diff.changed]
+		const documentsToIndex: Array<{ filePath: string; content: string }> = []
 
 		if (filesToProcess.length > 0) {
 			console.error(`[INFO] Processing ${filesToProcess.length} files...`)
-
-			// Initialize incremental engine if needed (for TF-IDF updates)
-			if (!this.incrementalEngine) {
-				this.incrementalEngine = new IncrementalTFIDF()
-			}
 
 			const batchSize = this.indexingBatchSize
 			let processedCount = 0
@@ -209,7 +210,6 @@ export class CodebaseIndexer {
 			for (let i = 0; i < filesToProcess.length; i += batchSize) {
 				const batchMetadata = filesToProcess.slice(i, i + batchSize)
 				const batchFiles: CodebaseFile[] = []
-				const batchUpdates: import('./incremental-tfidf.js').IncrementalUpdate[] = []
 
 				for (const metadata of batchMetadata) {
 					const content = readFileContent(metadata.absolutePath)
@@ -234,43 +234,48 @@ export class CodebaseIndexer {
 						hash: newHash,
 					}
 					batchFiles.push(codebaseFile)
-
-					// Prepare incremental update
-					const isNew = !dbEntry
-					batchUpdates.push({
-						type: isNew ? 'add' : 'update',
-						uri: `file://${metadata.path}`,
-						newContent: content,
-					})
+					documentsToIndex.push({ filePath: metadata.path, content })
 
 					processedCount++
 					this.status.currentFile = metadata.path
-					this.status.progress = Math.round((processedCount / filesToProcess.length) * 80)
+					this.status.progress = Math.round((processedCount / filesToProcess.length) * 50)
 					options.onProgress?.(processedCount, filesToProcess.length, metadata.path)
 				}
 
-				// Store batch to database
+				// Store batch to database (file content only)
 				if (batchFiles.length > 0) {
 					await persistentStorage.storeFiles(batchFiles)
-
-					// Update incremental engine
-					await this.incrementalEngine.applyUpdates(batchUpdates)
 				}
 			}
 		}
 
-		// Step 3: Rebuild TF-IDF index
-		console.error('[INFO] Rebuilding TF-IDF index...')
-		await this.fullRebuildSearchIndex()
+		// Step 3: Store document vectors for changed files (SQL-based, memory efficient)
+		console.error('[INFO] Updating document vectors...')
+		const addedTerms = await persistentStorage.storeDocumentVectorsForFiles(
+			documentsToIndex,
+			tokenize
+		)
+		this.status.progress = 70
 
-		// In low memory mode, release in-memory index
-		if (this.lowMemoryMode) {
-			this.searchIndex = null
-			this.incrementalEngine = null
-			console.error('[INFO] Low memory mode: released in-memory index')
-		}
+		// Step 4: Rebuild IDF scores from vectors (SQL-based)
+		console.error('[INFO] Recalculating IDF scores...')
+		await persistentStorage.rebuildIdfScoresFromVectors()
+		this.status.progress = 85
 
-		console.error('[SUCCESS] Incremental update complete')
+		// Step 5: Recalculate TF-IDF scores (SQL-based batch update)
+		console.error('[INFO] Updating TF-IDF scores...')
+		await persistentStorage.recalculateTfidfScores()
+		this.status.progress = 95
+
+		// Step 6: Invalidate search cache
+		this.searchCache.invalidate()
+		console.error('[INFO] Search cache invalidated')
+
+		// Log summary
+		const totalAffectedTerms = new Set([...deletedTerms, ...addedTerms]).size
+		console.error(
+			`[SUCCESS] Incremental update complete: ${documentsToIndex.length} files indexed, ${totalAffectedTerms} terms affected`
+		)
 	}
 
 	/**
