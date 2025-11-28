@@ -254,11 +254,20 @@ When to use:
 		`✓ Registered codebase_search tool (${isSemanticSearch ? 'semantic' : 'keyword'} mode)`
 	)
 
-	// Auto-index on startup if enabled
+	// Start server immediately (don't wait for indexing)
+	try {
+		await server.start()
+		Logger.success('✓ MCP Server connected and ready')
+	} catch (error: unknown) {
+		Logger.error('Failed to start MCP server', error)
+		process.exit(1)
+	}
+
+	// Auto-index in background (non-blocking)
 	if (autoIndex) {
-		Logger.info('📚 Starting automatic indexing...')
-		try {
-			await indexer.index({
+		Logger.info('📚 Starting automatic indexing (background)...')
+		indexer
+			.index({
 				watch: true, // Enable file watching
 				onProgress: (current, total, file) => {
 					if (current % 100 === 0 || current === total) {
@@ -269,23 +278,17 @@ When to use:
 					Logger.info(`File ${event.type}: ${event.path}`)
 				},
 			})
-			Logger.success(`✓ Indexed ${await indexer.getIndexedCount()} files`)
-			Logger.info('👁️  Watching for file changes...')
-		} catch (error) {
-			Logger.error('Failed to index codebase', error)
-			Logger.info('⚠️  Continuing without index (search will fail until indexed)')
-		}
+			.then(async () => {
+				Logger.success(`✓ Indexed ${await indexer.getIndexedCount()} files`)
+				Logger.info('👁️  Watching for file changes...')
+			})
+			.catch((error) => {
+				Logger.error('Failed to index codebase', error)
+				Logger.info('⚠️  Search will fail until indexed')
+			})
 	}
 
-	// Start server
-	try {
-		await server.start()
-		Logger.success('✓ MCP Server connected and ready')
-		Logger.info('💡 Press Ctrl+C to stop the server')
-	} catch (error: unknown) {
-		Logger.error('Failed to start MCP server', error)
-		process.exit(1)
-	}
+	Logger.info('💡 Press Ctrl+C to stop the server')
 }
 
 // Handle process signals
