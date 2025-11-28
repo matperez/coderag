@@ -55,7 +55,7 @@ CodeRAG is different:
 ### Integration
 - 📦 **MCP Server** - Works with Claude Desktop, Cursor, VS Code, Windsurf
 - 🧠 **Vector Search** - Optional OpenAI embeddings for semantic search
-- 🌳 **AST Chunking** - Smart code splitting using [Synth](https://github.com/SylphxAI/synth) parsers
+- 🌳 **AST Chunking** - Smart code splitting using [Synth](https://github.com/SylphxAI/synth) parsers (15+ languages)
 - 💻 **Low Memory Mode** - SQL-based search for resource-constrained environments
 
 ---
@@ -382,7 +382,8 @@ coderag/
 │   │   │   ├── storage-persistent.ts # SQLite storage
 │   │   │   ├── vector-storage.ts    # LanceDB vector storage
 │   │   │   ├── embeddings.ts        # OpenAI embeddings
-│   │   │   └── ast-chunking.ts      # Synth AST chunking
+│   │   │   ├── ast-chunking.ts      # Synth AST chunking
+│   │   │   └── language-config.ts   # Language registry (15+ languages)
 │   │   └── package.json
 │   │
 │   └── mcp-server/               # @sylphx/coderag-mcp
@@ -394,9 +395,24 @@ coderag/
 ### How It Works
 
 1. **Indexing**: Scans codebase, tokenizes with StarCoder2, builds TF-IDF index
-2. **Storage**: Persists to SQLite (`.coderag/` folder) for instant startup
-3. **Watching**: Detects file changes, performs incremental updates
-4. **Search**: Hybrid TF-IDF + optional vector search with score fusion
+2. **AST Chunking**: Splits code at semantic boundaries (functions, classes, etc.)
+3. **Storage**: Persists to SQLite (`.coderag/` folder) for instant startup
+4. **Watching**: Detects file changes, performs incremental updates
+5. **Search**: Hybrid TF-IDF + optional vector search with score fusion
+
+### Supported Languages
+
+AST-based chunking with semantic boundary detection:
+
+| Category | Languages |
+|----------|-----------|
+| **JavaScript** | JavaScript, TypeScript, JSX, TSX |
+| **Systems** | Python, Go, Java, C |
+| **Markup** | Markdown, HTML, XML |
+| **Data/Config** | JSON, YAML, TOML, INI |
+| **Other** | Protobuf |
+
+**Embedded Code Support**: Automatically parses code blocks in Markdown and `<script>`/`<style>` tags in HTML.
 
 ---
 
