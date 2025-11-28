@@ -1,5 +1,11 @@
 # @sylphx/codebase-search-mcp
 
+## 0.3.18 (2025-11-28)
+
+### 📦 Dependencies
+
+- Updated `@sylphx/coderag` to 0.1.14
+
 ## 0.3.17 (2025-11-28)
 
 ### 📦 Dependencies
