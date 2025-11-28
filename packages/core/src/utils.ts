@@ -6,6 +6,8 @@ import fs from 'node:fs'
 import path from 'node:path'
 import ignore, { type Ignore } from 'ignore'
 
+export type { Ignore }
+
 /**
  * Detect programming language from file extension
  */

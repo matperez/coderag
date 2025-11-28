@@ -19,6 +19,7 @@ import {
 import {
 	detectLanguage,
 	type FileMetadata,
+	type Ignore,
 	isTextFile,
 	loadGitignore,
 	readFileContent,
@@ -54,6 +55,16 @@ export interface IndexingStatus {
 	currentFile?: string
 }
 
+/**
+ * Result of comparing filesystem with database
+ */
+export interface FileDiff {
+	added: FileMetadata[]
+	changed: FileMetadata[]
+	deleted: string[] // paths only
+	unchanged: number
+}
+
 export class CodebaseIndexer {
 	private codebaseRoot: string
 	private maxFileSize: number
@@ -66,7 +77,7 @@ export class CodebaseIndexer {
 	private isWatching = false
 	private onFileChangeCallback?: (event: FileChangeEvent) => void
 	private pendingUpdates = new Map<string, NodeJS.Timeout>()
-	private ignoreFilter: any = null
+	private ignoreFilter: Ignore | null = null
 	private status: IndexingStatus = {
 		isIndexing: false,
 		progress: 0,
@@ -115,6 +126,154 @@ export class CodebaseIndexer {
 	}
 
 	/**
+	 * Compare filesystem with database to find changes
+	 * Used for incremental updates after long periods of inactivity
+	 */
+	private async diffFilesystem(
+		dbMetadata: Map<string, { mtime: number; hash: string }>
+	): Promise<FileDiff> {
+		if (!this.ignoreFilter) {
+			this.ignoreFilter = loadGitignore(this.codebaseRoot)
+		}
+
+		const added: FileMetadata[] = []
+		const changed: FileMetadata[] = []
+		const deleted: string[] = []
+		let unchanged = 0
+
+		// Track which db files we've seen in filesystem
+		const seenPaths = new Set<string>()
+
+		// Scan filesystem
+		for (const metadata of scanFileMetadata(this.codebaseRoot, {
+			ignoreFilter: this.ignoreFilter,
+			codebaseRoot: this.codebaseRoot,
+			maxFileSize: this.maxFileSize,
+		})) {
+			seenPaths.add(metadata.path)
+			const dbEntry = dbMetadata.get(metadata.path)
+
+			if (!dbEntry) {
+				// New file
+				added.push(metadata)
+			} else if (Math.abs(metadata.mtime - dbEntry.mtime) > 1000) {
+				// mtime changed (1 second tolerance for filesystem precision)
+				// File might have changed, need to verify with hash
+				changed.push(metadata)
+			} else {
+				unchanged++
+			}
+		}
+
+		// Find deleted files (in db but not in filesystem)
+		for (const dbPath of dbMetadata.keys()) {
+			if (!seenPaths.has(dbPath)) {
+				deleted.push(dbPath)
+			}
+		}
+
+		return { added, changed, deleted, unchanged }
+	}
+
+	/**
+	 * Process incremental changes (add, update, delete files)
+	 * Much faster than full rebuild when only a few files changed
+	 */
+	private async processIncrementalChanges(
+		diff: FileDiff,
+		dbMetadata: Map<string, { mtime: number; hash: string }>,
+		options: IndexerOptions
+	): Promise<void> {
+		const persistentStorage = this.storage as PersistentStorage
+
+		// Step 1: Delete removed files
+		if (diff.deleted.length > 0) {
+			console.error(`[INFO] Deleting ${diff.deleted.length} removed files...`)
+			await persistentStorage.deleteFiles(diff.deleted)
+		}
+
+		// Step 2: Process added and changed files
+		const filesToProcess = [...diff.added, ...diff.changed]
+
+		if (filesToProcess.length > 0) {
+			console.error(`[INFO] Processing ${filesToProcess.length} files...`)
+
+			// Initialize incremental engine if needed (for TF-IDF updates)
+			if (!this.incrementalEngine) {
+				this.incrementalEngine = new IncrementalTFIDF()
+			}
+
+			const batchSize = this.indexingBatchSize
+			let processedCount = 0
+
+			for (let i = 0; i < filesToProcess.length; i += batchSize) {
+				const batchMetadata = filesToProcess.slice(i, i + batchSize)
+				const batchFiles: CodebaseFile[] = []
+				const batchUpdates: import('./incremental-tfidf.js').IncrementalUpdate[] = []
+
+				for (const metadata of batchMetadata) {
+					const content = readFileContent(metadata.absolutePath)
+					if (content === null) continue
+
+					const newHash = simpleHash(content)
+
+					// For changed files, verify content actually changed using hash
+					const dbEntry = dbMetadata.get(metadata.path)
+					if (dbEntry && dbEntry.hash === newHash) {
+						// File content unchanged, just mtime difference - skip
+						processedCount++
+						continue
+					}
+
+					const codebaseFile: CodebaseFile = {
+						path: metadata.path,
+						content,
+						size: metadata.size,
+						mtime: new Date(metadata.mtime),
+						language: metadata.language,
+						hash: newHash,
+					}
+					batchFiles.push(codebaseFile)
+
+					// Prepare incremental update
+					const isNew = !dbEntry
+					batchUpdates.push({
+						type: isNew ? 'add' : 'update',
+						uri: `file://${metadata.path}`,
+						newContent: content,
+					})
+
+					processedCount++
+					this.status.currentFile = metadata.path
+					this.status.progress = Math.round((processedCount / filesToProcess.length) * 80)
+					options.onProgress?.(processedCount, filesToProcess.length, metadata.path)
+				}
+
+				// Store batch to database
+				if (batchFiles.length > 0) {
+					await persistentStorage.storeFiles(batchFiles)
+
+					// Update incremental engine
+					await this.incrementalEngine.applyUpdates(batchUpdates)
+				}
+			}
+		}
+
+		// Step 3: Rebuild TF-IDF index
+		console.error('[INFO] Rebuilding TF-IDF index...')
+		await this.fullRebuildSearchIndex()
+
+		// In low memory mode, release in-memory index
+		if (this.lowMemoryMode) {
+			this.searchIndex = null
+			this.incrementalEngine = null
+			console.error('[INFO] Low memory mode: released in-memory index')
+		}
+
+		console.error('[SUCCESS] Incremental update complete')
+	}
+
+	/**
 	 * Get search index
 	 */
 	getSearchIndex(): SearchIndex | null {
@@ -136,12 +295,19 @@ export class CodebaseIndexer {
 				if (existingCount > 0) {
 					console.error(`[INFO] Found existing index with ${existingCount} files`)
 
-					// In low memory mode, just verify index exists - don't load to memory
-					if (this.lowMemoryMode) {
-						// Verify IDF scores exist (index is valid)
-						const idf = await this.storage.getIdfScores()
-						if (idf.size > 0) {
-							console.error('[SUCCESS] Index verified (low memory mode - not loaded to RAM)')
+					// Verify IDF scores exist (index is valid)
+					const idf = await this.storage.getIdfScores()
+					if (idf.size > 0) {
+						// Incremental diff: compare filesystem vs database
+						console.error('[INFO] Checking for file changes since last index...')
+						const dbMetadata = await this.storage.getAllFileMetadata()
+						const diff = await this.diffFilesystem(dbMetadata)
+
+						const totalChanges = diff.added.length + diff.changed.length + diff.deleted.length
+
+						if (totalChanges === 0) {
+							// No changes - use existing index
+							console.error(`[SUCCESS] No changes detected (${diff.unchanged} files unchanged)`)
 							this.status.progress = 100
 							this.status.indexedFiles = existingCount
 							this.status.totalFiles = existingCount
@@ -154,26 +320,27 @@ export class CodebaseIndexer {
 							this.status.isIndexing = false
 							return
 						}
-						console.error('[WARN] Index verification failed, rebuilding...')
-					} else {
-						console.error('[INFO] Loading index from database...')
-						const loaded = await this.loadSearchIndexFromStorage()
-						if (loaded) {
-							console.error('[SUCCESS] Index loaded from database')
-							this.status.progress = 100
-							this.status.indexedFiles = existingCount
-							this.status.totalFiles = existingCount
 
-							// Start watching if requested
-							if (options.watch) {
-								await this.startWatch()
-							}
+						// Process incremental changes
+						console.error(
+							`[INFO] Incremental update: ${diff.added.length} added, ${diff.changed.length} changed, ${diff.deleted.length} deleted`
+						)
 
-							this.status.isIndexing = false
-							return
+						await this.processIncrementalChanges(diff, dbMetadata, options)
+
+						this.status.progress = 100
+						this.status.indexedFiles = existingCount + diff.added.length - diff.deleted.length
+						this.status.totalFiles = this.status.indexedFiles
+
+						// Start watching if requested
+						if (options.watch) {
+							await this.startWatch()
 						}
-						console.error('[WARN] Failed to load index, rebuilding...')
+
+						this.status.isIndexing = false
+						return
 					}
+					console.error('[WARN] Index verification failed, rebuilding...')
 				}
 			}
 
@@ -671,86 +838,6 @@ export class CodebaseIndexer {
 	}
 
 	/**
-	 * Load search index from persistent storage
-	 */
-	private async loadSearchIndexFromStorage(): Promise<boolean> {
-		if (!(this.storage instanceof PersistentStorage)) {
-			return false
-		}
-
-		try {
-			// Load IDF scores
-			const idf = await this.storage.getIdfScores()
-			if (idf.size === 0) {
-				return false
-			}
-
-			// Load all document vectors in single batch query (CPU + Memory optimization)
-			// This replaces N+1 query pattern with single JOIN query
-			const allVectors = await this.storage.getAllDocumentVectors()
-			if (allVectors.size === 0) {
-				return false
-			}
-
-			// Reconstruct document vectors from batch result
-			const documentVectors: Array<{
-				uri: string
-				terms: Map<string, number>
-				rawTerms: Map<string, number>
-				magnitude: number
-			}> = []
-
-			for (const [filePath, vectors] of allVectors) {
-				// Build terms and rawTerms maps
-				const terms = new Map<string, number>()
-				const rawTerms = new Map<string, number>()
-
-				for (const [term, data] of vectors.entries()) {
-					terms.set(term, data.tfidf)
-					rawTerms.set(term, data.rawFreq)
-				}
-
-				// Calculate magnitude
-				let sumSquares = 0
-				for (const tfidf of terms.values()) {
-					sumSquares += tfidf * tfidf
-				}
-				const magnitude = Math.sqrt(sumSquares)
-
-				documentVectors.push({
-					uri: `file://${filePath}`,
-					terms,
-					rawTerms,
-					magnitude,
-				})
-			}
-
-			// Build search index
-			this.searchIndex = {
-				documents: documentVectors,
-				idf,
-				totalDocuments: documentVectors.length,
-				metadata: {
-					generatedAt: new Date().toISOString(),
-					version: '1.0.0',
-				},
-			}
-
-			// Initialize incremental engine for future updates
-			this.incrementalEngine = new IncrementalTFIDF(
-				this.searchIndex.documents,
-				this.searchIndex.idf
-			)
-			console.error('[INFO] Incremental update engine initialized from database')
-
-			return true
-		} catch (error) {
-			console.error('[ERROR] Failed to load search index from storage:', error)
-			return false
-		}
-	}
-
-	/**
 	 * Check if currently watching for changes
 	 */
 	isWatchEnabled(): boolean {
@@ -804,8 +891,9 @@ export class CodebaseIndexer {
 			if (!this.searchIndex) {
 				throw new Error('Codebase not indexed. Please run index() first.')
 			}
+			const searchIndex = this.searchIndex
 			results = await import('./tfidf.js').then((m) =>
-				m.searchDocuments(query, this.searchIndex!, { limit })
+				m.searchDocuments(query, searchIndex, { limit })
 			)
 		}
 

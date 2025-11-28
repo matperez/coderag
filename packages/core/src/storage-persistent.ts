@@ -589,6 +589,62 @@ export class PersistentStorage implements Storage {
 	}
 
 	/**
+	 * Get all file metadata (path, mtime, hash) without content
+	 * Used for incremental diff detection
+	 */
+	async getAllFileMetadata(): Promise<Map<string, { mtime: number; hash: string }>> {
+		const { db } = this.dbInstance
+
+		const results = await db
+			.select({
+				path: schema.files.path,
+				mtime: schema.files.mtime,
+				hash: schema.files.hash,
+			})
+			.from(schema.files)
+			.all()
+
+		const metadata = new Map<string, { mtime: number; hash: string }>()
+		for (const row of results) {
+			metadata.set(row.path, { mtime: row.mtime, hash: row.hash })
+		}
+
+		return metadata
+	}
+
+	/**
+	 * Delete multiple files in a single transaction (batch operation)
+	 */
+	async deleteFiles(paths: string[]): Promise<void> {
+		if (paths.length === 0) {
+			return
+		}
+
+		const { db, sqlite } = this.dbInstance
+
+		sqlite.exec('BEGIN TRANSACTION')
+
+		try {
+			// Delete in chunks to avoid SQLite variable limits
+			const chunkSize = 500
+			for (let i = 0; i < paths.length; i += chunkSize) {
+				const chunk = paths.slice(i, i + chunkSize)
+				await db.delete(schema.files).where(
+					sql`${schema.files.path} IN (${sql.join(
+						chunk.map((p) => sql`${p}`),
+						sql`, `
+					)})`
+				)
+			}
+
+			sqlite.exec('COMMIT')
+		} catch (error) {
+			sqlite.exec('ROLLBACK')
+			throw error
+		}
+	}
+
+	/**
 	 * Store metadata
 	 */
 	async setMetadata(key: string, value: string): Promise<void> {

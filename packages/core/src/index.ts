@@ -40,6 +40,7 @@ export {
 export {
 	CodebaseIndexer,
 	type FileChangeEvent,
+	type FileDiff,
 	type IndexerOptions,
 	type IndexingStatus,
 	type SearchResult,
