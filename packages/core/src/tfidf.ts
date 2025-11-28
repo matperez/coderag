@@ -84,10 +84,12 @@ function calculateIDF(
 		}
 	}
 
-	// Calculate IDF for each term
+	// Calculate IDF for each term using smoothed formula
+	// Standard formula: log(N/df) = 0 when term appears in ALL documents
+	// Smoothed formula: log((N+1)/(df+1)) + 1 ensures no term gets IDF=0
 	const idf = new Map<string, number>()
 	for (const [term, docFreq] of documentFrequency.entries()) {
-		idf.set(term, Math.log(totalDocuments / docFreq))
+		idf.set(term, Math.log((totalDocuments + 1) / (docFreq + 1)) + 1)
 	}
 
 	return idf
@@ -310,12 +312,12 @@ export async function searchDocumentsFromStorage(
 		// Cosine similarity
 		let score = dotProduct / (queryMagnitude * docMagnitude)
 
-		// Boost for exact term matches
-		score *= 1.5 ** matchedTerms.length
+		// Boost for exact term matches (logarithmic to prevent score explosion)
+		score *= 1 + Math.log(1 + matchedTerms.length)
 
 		// Boost for phrase matches
 		if (matchedTerms.length === queryTokens.length && queryTokens.length > 1) {
-			score *= 2.0
+			score *= 1.5 // Reduced from 2.0 to prevent over-boosting
 		}
 
 		if (score < minThreshold) continue
@@ -377,12 +379,13 @@ export async function searchDocuments(
 		// Only calculate similarity for documents with matches
 		let score = calculateCosineSimilarity(queryVector, doc)
 
-		// Boost for exact term matches
-		score *= 1.5 ** matchedTerms.length
+		// Boost for exact term matches (logarithmic to prevent score explosion)
+		// Old: 1.5^10 = 57x, New: 1 + log(11) ≈ 3.4x
+		score *= 1 + Math.log(1 + matchedTerms.length)
 
 		// Boost for phrase matches (all terms found)
 		if (matchedTerms.length === queryTokens.length && queryTokens.length > 1) {
-			score *= 2.0
+			score *= 1.5 // Reduced from 2.0 to prevent over-boosting
 		}
 
 		// Early skip if score can't make it into top-k (CPU + Memory optimization)

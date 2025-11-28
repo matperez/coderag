@@ -47,6 +47,7 @@ export const documentVectors = sqliteTable(
 		fileIdIdx: index('vectors_file_id_idx').on(table.fileId),
 		termIdx: index('vectors_term_idx').on(table.term),
 		tfidfIdx: index('vectors_tfidf_idx').on(table.tfidf),
+		termFileIdx: index('vectors_term_file_idx').on(table.term, table.fileId), // Composite index for search
 	})
 )
 

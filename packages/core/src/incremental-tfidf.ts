@@ -95,11 +95,12 @@ export class IncrementalTFIDF {
 			}
 		}
 
-		// Phase 2: Recalculate IDF for affected terms
+		// Phase 2: Recalculate IDF for affected terms using smoothed formula
+		// Smoothed IDF: log((N+1)/(df+1)) + 1 ensures no term gets IDF=0
 		for (const term of affectedTerms) {
 			const df = this.documentFrequency.get(term) || 0
 			if (df > 0) {
-				this.idf.set(term, Math.log(this.totalDocuments / df))
+				this.idf.set(term, Math.log((this.totalDocuments + 1) / (df + 1)) + 1)
 			} else {
 				this.idf.delete(term)
 				this.documentFrequency.delete(term)

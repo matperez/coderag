@@ -742,7 +742,6 @@ export class CodebaseIndexer {
 		}
 
 		// Perform incremental update
-		const _startTime = Date.now()
 		const stats = await this.incrementalEngine.applyUpdates(this.pendingFileChanges)
 		this.pendingFileChanges = []
 

@@ -238,9 +238,19 @@ export class PersistentStorage implements Storage {
 		sqlite.exec('BEGIN TRANSACTION')
 
 		try {
-			// First, get all file IDs in one query
-			const _filePaths = documents.map((doc) => doc.filePath)
-			const files = await db.select().from(schema.files).all()
+			// Get file IDs only for paths we need (Memory optimization)
+			// Previously loaded ALL files, now only loads needed paths
+			const filePaths = documents.map((doc) => doc.filePath)
+			const files = await db
+				.select({ id: schema.files.id, path: schema.files.path })
+				.from(schema.files)
+				.where(
+					sql`${schema.files.path} IN (${sql.join(
+						filePaths.map((p) => sql`${p}`),
+						sql`, `
+					)})`
+				)
+				.all()
 
 			const fileIdMap = new Map<string, number>()
 			for (const file of files) {
@@ -683,11 +693,12 @@ export class PersistentStorage implements Storage {
 		try {
 			await db.delete(schema.idfScores)
 
-			// Insert in batches
+			// Insert in batches using smoothed IDF formula
+			// Smoothed IDF: log((N+1)/(df+1)) + 1 ensures no term gets IDF=0
 			const BATCH_SIZE = 300
 			const scores = dfResults.map((row) => ({
 				term: row.term,
-				idf: Math.log(totalDocs / row.df),
+				idf: Math.log((totalDocs + 1) / (row.df + 1)) + 1,
 				documentFrequency: row.df,
 			}))
 
@@ -761,8 +772,19 @@ export class PersistentStorage implements Storage {
 		sqlite.exec('BEGIN TRANSACTION')
 
 		try {
-			// Get file IDs
-			const files = await db.select().from(schema.files).all()
+			// Get file IDs only for paths we need (Memory optimization)
+			const filePaths = documents.map((d) => d.filePath)
+			const files = await db
+				.select({ id: schema.files.id, path: schema.files.path })
+				.from(schema.files)
+				.where(
+					sql`${schema.files.path} IN (${sql.join(
+						filePaths.map((p) => sql`${p}`),
+						sql`, `
+					)})`
+				)
+				.all()
+
 			const fileIdMap = new Map<string, number>()
 			for (const file of files) {
 				fileIdMap.set(file.path, file.id)

@@ -103,4 +103,26 @@ export function runMigrations(sqlite: Database.Database): void {
 
 		console.error('[DB] Migration complete: add_magnitude_column_v1')
 	}
+
+	// Migration 3: Add composite index for efficient term search
+	const migration3Hash = 'add_composite_term_index_v1'
+	const existingMigration3 = sqlite
+		.prepare('SELECT id FROM __drizzle_migrations WHERE hash = ?')
+		.get(migration3Hash)
+
+	if (!existingMigration3) {
+		console.error('[DB] Running migration: add_composite_term_index_v1')
+
+		// Add composite index (term, file_id) for efficient search queries
+		// searchByTerms() filters by term first, then groups by file_id
+		sqlite.exec(`
+      CREATE INDEX IF NOT EXISTS vectors_term_file_idx ON document_vectors(term, file_id);
+    `)
+
+		sqlite
+			.prepare('INSERT INTO __drizzle_migrations (hash, created_at) VALUES (?, ?)')
+			.run(migration3Hash, Date.now())
+
+		console.error('[DB] Migration complete: add_composite_term_index_v1')
+	}
 }
