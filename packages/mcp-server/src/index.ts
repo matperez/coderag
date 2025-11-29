@@ -190,7 +190,7 @@ When to use:
 						'░'.repeat(20 - Math.floor(status.progress / 5))
 
 					return text(
-						`⏳ **Codebase Indexing In Progress**\n\nThe codebase is currently being indexed. Please wait...\n\n**Progress:** ${status.progress}%\n\`${progressBar}\`\n\n**Status:**\n- Files indexed: ${status.indexedFiles}/${status.totalFiles}\n${status.currentFile ? `- Current file: \`${status.currentFile}\`` : ''}\n\n💡 **Tip:** Try your search again in a few seconds.`
+						`⏳ **Codebase Indexing In Progress**\n\nThe codebase is currently being indexed. Please wait...\n\n**Progress:** ${status.progress}%\n\`${progressBar}\`\n\n**Status:**\n- Chunks indexed: ${status.indexedChunks}${status.totalChunks ? `/${status.totalChunks}` : ''}\n- Files processed: ${status.processedFiles}/${status.totalFiles}\n${status.currentFile ? `- Current file: \`${status.currentFile}\`` : ''}\n\n💡 **Tip:** Try your search again in a few seconds.`
 					)
 				}
 
@@ -232,7 +232,7 @@ When to use:
 							const progressBar =
 								'█'.repeat(Math.floor(pct / 5)) + '░'.repeat(20 - Math.floor(pct / 5))
 							return text(
-								`⏳ **Indexing In Progress**\n\n**Progress:** ${pct}%\n\`${progressBar}\`\n\n**Files:** ${status.indexedFiles}/${status.totalFiles}\n${status.currentFile ? `**Current:** \`${status.currentFile}\`` : ''}\n\n💡 Try again in a few seconds.`
+								`⏳ **Indexing In Progress**\n\n**Progress:** ${pct}%\n\`${progressBar}\`\n\n**Chunks:** ${status.indexedChunks}${status.totalChunks ? `/${status.totalChunks}` : ''} | **Files:** ${status.processedFiles}/${status.totalFiles}\n${status.currentFile ? `**Current:** \`${status.currentFile}\`` : ''}\n\n💡 Try again in a few seconds.`
 							)
 						}
 						if (indexingPending) {

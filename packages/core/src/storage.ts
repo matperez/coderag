@@ -19,6 +19,7 @@ export interface Storage {
 	deleteFile(path: string): Promise<void>
 	clear(): Promise<void>
 	count(): Promise<number>
+	getChunkCount?(): Promise<number> // Optional - for chunk-based storage
 	exists(path: string): Promise<boolean>
 }
 

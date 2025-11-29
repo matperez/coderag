@@ -48,7 +48,9 @@ export interface IndexingStatus {
 	isIndexing: boolean
 	progress: number
 	totalFiles: number
-	indexedFiles: number
+	processedFiles: number
+	totalChunks: number
+	indexedChunks: number
 	currentFile?: string
 }
 
@@ -79,7 +81,9 @@ export class CodebaseIndexer {
 		isIndexing: false,
 		progress: 0,
 		totalFiles: 0,
-		indexedFiles: 0,
+		processedFiles: 0,
+		totalChunks: 0,
+		indexedChunks: 0,
 	}
 	private vectorStorage?: VectorStorage
 	private embeddingProvider?: EmbeddingProvider
@@ -352,14 +356,18 @@ export class CodebaseIndexer {
 	async index(options: IndexerOptions = {}): Promise<void> {
 		this.status.isIndexing = true
 		this.status.progress = 0
-		this.status.indexedFiles = 0
+		this.status.processedFiles = 0
+		this.status.indexedChunks = 0
 
 		try {
 			// Try to load existing index from persistent storage
 			if (this.storage instanceof PersistentStorage) {
-				const existingCount = await this.storage.count()
-				if (existingCount > 0) {
-					console.error(`[INFO] Found existing index with ${existingCount} files`)
+				const existingFileCount = await this.storage.count()
+				const existingChunkCount = (await this.storage.getChunkCount?.()) ?? 0
+				if (existingFileCount > 0) {
+					console.error(
+						`[INFO] Found existing index: ${existingFileCount} files, ${existingChunkCount} chunks`
+					)
 
 					// Verify IDF scores exist (index is valid)
 					const idf = await this.storage.getIdfScores()
@@ -373,10 +381,14 @@ export class CodebaseIndexer {
 
 						if (totalChanges === 0) {
 							// No changes - use existing index
-							console.error(`[SUCCESS] No changes detected (${diff.unchanged} files unchanged)`)
+							console.error(
+								`[SUCCESS] No changes detected (${diff.unchanged} files, ${existingChunkCount} chunks)`
+							)
 							this.status.progress = 100
-							this.status.indexedFiles = existingCount
-							this.status.totalFiles = existingCount
+							this.status.totalFiles = existingFileCount
+							this.status.processedFiles = existingFileCount
+							this.status.totalChunks = existingChunkCount
+							this.status.indexedChunks = existingChunkCount
 
 							// Start watching if requested
 							if (options.watch) {
@@ -394,9 +406,15 @@ export class CodebaseIndexer {
 
 						await this.processIncrementalChanges(diff, dbMetadata, options)
 
+						// Get updated chunk count after incremental changes
+						const updatedChunkCount = (await this.storage.getChunkCount?.()) ?? 0
+						const updatedFileCount = existingFileCount + diff.added.length - diff.deleted.length
+
 						this.status.progress = 100
-						this.status.indexedFiles = existingCount + diff.added.length - diff.deleted.length
-						this.status.totalFiles = this.status.indexedFiles
+						this.status.totalFiles = updatedFileCount
+						this.status.processedFiles = updatedFileCount
+						this.status.totalChunks = updatedChunkCount
+						this.status.indexedChunks = updatedChunkCount
 
 						// Start watching if requested
 						if (options.watch) {
@@ -489,7 +507,8 @@ export class CodebaseIndexer {
 
 					processedCount++
 					this.status.currentFile = metadata.path
-					this.status.indexedFiles = processedCount
+					this.status.processedFiles = processedCount
+					this.status.indexedChunks = totalChunks
 					this.status.progress = Math.round((processedCount / fileMetadataList.length) * 40)
 					options.onProgress?.(processedCount, fileMetadataList.length, metadata.path)
 				}
@@ -569,6 +588,7 @@ export class CodebaseIndexer {
 			}
 
 			console.error(`[INFO] Total chunks created: ${totalChunks}`)
+			this.status.totalChunks = totalChunks
 			this.status.progress = 50
 
 			// Finalize index based on storage type
@@ -620,7 +640,8 @@ export class CodebaseIndexer {
 			}
 
 			this.status.progress = 100
-			console.error(`[SUCCESS] Indexed ${fileMetadataList.length} files`)
+			this.status.indexedChunks = totalChunks
+			console.error(`[SUCCESS] Indexed ${totalChunks} chunks from ${fileMetadataList.length} files`)
 
 			// Start watching if requested
 			if (options.watch) {
