@@ -224,23 +224,24 @@ Search project source files with hybrid TF-IDF + vector ranking.
 
 ### Response Format
 
+LLM-optimized output (minimal tokens, maximum content):
+
 ```markdown
-# 🔍 Codebase Search Results
+# Search: "user authentication login" (3 results)
 
-**Query:** "user authentication login"
-**Results:** 3 / 500 files
-
-## 1. `src/auth/login.ts`
-
-- **Score:** 0.87
-- **Language:** TypeScript
-- **Matched Terms:** authentication, login, user
-
-**Snippet:**
+## src/auth/login.ts:15-28
 ```typescript
 15: export async function authenticate(credentials) {
 16:   const user = await findUser(credentials.email)
 17:   return validatePassword(user, credentials.password)
+18: }
+```
+
+## src/middleware/auth.ts:42-55 [md→typescript]
+```typescript
+42: // Embedded code from markdown docs
+43: const authMiddleware = (req, res, next) => {
+```
 ```
 
 ---

@@ -18,7 +18,7 @@
     },
     "packages/core": {
       "name": "@sylphx/coderag",
-      "version": "0.1.17",
+      "version": "0.1.18",
       "dependencies": {
         "@ai-sdk/openai": "^1.0.11",
         "@huggingface/transformers": "^3.7.6",
@@ -36,6 +36,7 @@
         "@sylphx/synth-md-gfm": "^0.2.3",
         "@sylphx/synth-protobuf": "^0.2.1",
         "@sylphx/synth-python": "^0.2.1",
+        "@sylphx/synth-rust": "^0.2.3",
         "@sylphx/synth-toml": "^0.2.1",
         "@sylphx/synth-xml": "^0.2.1",
         "@sylphx/synth-yaml": "latest",
@@ -55,7 +56,7 @@
     },
     "packages/mcp-server": {
       "name": "@sylphx/coderag-mcp",
-      "version": "0.3.23",
+      "version": "0.3.24",
       "bin": {
         "coderag-mcp": "./dist/index.js",
       },
@@ -441,6 +442,8 @@
     "@sylphx/synth-protobuf": ["@sylphx/synth-protobuf@0.2.1", "", { "dependencies": { "@sylphx/synth": "0.2.0", "protobufjs": "^7.4.0" } }, "sha512-PspV7foIurQwKl3WGxA+0IO0CKwrieaikzfEIn95gffIchenybJnAaI+BxuydalhyqSbbbTnfKQrL2UOOtNgkg=="],
 
     "@sylphx/synth-python": ["@sylphx/synth-python@0.2.1", "", { "dependencies": { "@sylphx/synth": "0.2.0", "tree-sitter": "^0.21.1", "tree-sitter-python": "^0.23.6" } }, "sha512-foQOeArpmHHgyX+HMydGLzKdYN55k5aKmF0Hgm+0cWIJ08I3bmuQNldIbSEiFevq0RLsoH55YBWTUQLmV12Yuw=="],
+
+    "@sylphx/synth-rust": ["@sylphx/synth-rust@0.2.3", "", { "dependencies": { "@sylphx/synth": "^0.3.2", "tree-sitter": "^0.21.1", "tree-sitter-rust": "^0.23.2" } }, "sha512-jnRMmpwQPkpn5+JnwRHK+fvHIsbN/fwS90lVLjmeBMue/+QDEsAM0H879ja6T4lWRJHzv7rkC3tcD6jvNwPKIw=="],
 
     "@sylphx/synth-toml": ["@sylphx/synth-toml@0.2.1", "", { "dependencies": { "@sylphx/synth": "0.2.0" } }, "sha512-Yvi5hFoIw/5wdM6hh9D8tUJlvVWm0rfpmh3qzCKOVrobHUphcdsxqtwrn3CIUjfER6BvMtY3N7KTRJQoqhYSbQ=="],
 
@@ -934,6 +937,8 @@
 
     "tree-sitter-python": ["tree-sitter-python@0.23.6", "", { "dependencies": { "node-addon-api": "^8.3.0", "node-gyp-build": "^4.8.4" }, "peerDependencies": { "tree-sitter": "^0.22.1" }, "optionalPeers": ["tree-sitter"] }, "sha512-yIM9z0oxKIxT7bAtPOhgoVl6gTXlmlIhue7liFT4oBPF/lha7Ha4dQBS82Av6hMMRZoVnFJI8M6mL+SwWoLD3A=="],
 
+    "tree-sitter-rust": ["tree-sitter-rust@0.23.3", "", { "dependencies": { "node-addon-api": "^8.2.2", "node-gyp-build": "^4.8.4" }, "peerDependencies": { "tree-sitter": "^0.22.1" }, "optionalPeers": ["tree-sitter"] }, "sha512-uLdZJ1K26EuJTBMJlz1ltTlg7nJyAYThfouXgigf5ixKOasOL5wNrRCpuWTsl6rDcKlZK9UX+annFLqP/kchwQ=="],
+
     "trim-lines": ["trim-lines@3.0.1", "", {}, "sha512-kRj8B+YHZCc9kQYdWfJB2/oUl9rA99qbowYYBtr4ui4mZyAQ2JpvVBd/6U2YloATfqBhBTSMhTpgBHtU0Mf3Rg=="],
 
     "tslib": ["tslib@2.8.1", "", {}, "sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w=="],
@@ -1036,6 +1041,8 @@
 
     "@sylphx/synth-python/@sylphx/synth": ["@sylphx/synth@0.2.0", "", {}, "sha512-28ibNaUcT54Hc62pT7DcRka7ItzlWkB6LJ7Im+lBId8JLiSjh7gw8MhzNk3daTDzrtky4E2GCAWsEGhLVxHGdQ=="],
 
+    "@sylphx/synth-rust/@sylphx/synth": ["@sylphx/synth@0.3.2", "", {}, "sha512-g+8RFCzuxkU2OwC4T+Gn5BWjV93Ehhzatm7ccwM7yzhD22VBIe/wZ58WavoDzwOQg0uLbFRcURYDKEdXYevboA=="],
+
     "@sylphx/synth-toml/@sylphx/synth": ["@sylphx/synth@0.2.0", "", {}, "sha512-28ibNaUcT54Hc62pT7DcRka7ItzlWkB6LJ7Im+lBId8JLiSjh7gw8MhzNk3daTDzrtky4E2GCAWsEGhLVxHGdQ=="],
 
     "@sylphx/synth-xml/@sylphx/synth": ["@sylphx/synth@0.2.0", "", {}, "sha512-28ibNaUcT54Hc62pT7DcRka7ItzlWkB6LJ7Im+lBId8JLiSjh7gw8MhzNk3daTDzrtky4E2GCAWsEGhLVxHGdQ=="],
@@ -1099,6 +1106,8 @@
     "tree-sitter-java/node-addon-api": ["node-addon-api@8.5.0", "", {}, "sha512-/bRZty2mXUIFY/xU5HLvveNHlswNJej+RnxBjOMkidWfwZzgTbPG1E3K5TOxRLOR+5hX7bSofy8yf1hZevMS8A=="],
 
     "tree-sitter-python/node-addon-api": ["node-addon-api@8.5.0", "", {}, "sha512-/bRZty2mXUIFY/xU5HLvveNHlswNJej+RnxBjOMkidWfwZzgTbPG1E3K5TOxRLOR+5hX7bSofy8yf1hZevMS8A=="],
+
+    "tree-sitter-rust/node-addon-api": ["node-addon-api@8.5.0", "", {}, "sha512-/bRZty2mXUIFY/xU5HLvveNHlswNJej+RnxBjOMkidWfwZzgTbPG1E3K5TOxRLOR+5hX7bSofy8yf1hZevMS8A=="],
 
     "vite/esbuild": ["esbuild@0.21.5", "", { "optionalDependencies": { "@esbuild/aix-ppc64": "0.21.5", "@esbuild/android-arm": "0.21.5", "@esbuild/android-arm64": "0.21.5", "@esbuild/android-x64": "0.21.5", "@esbuild/darwin-arm64": "0.21.5", "@esbuild/darwin-x64": "0.21.5", "@esbuild/freebsd-arm64": "0.21.5", "@esbuild/freebsd-x64": "0.21.5", "@esbuild/linux-arm": "0.21.5", "@esbuild/linux-arm64": "0.21.5", "@esbuild/linux-ia32": "0.21.5", "@esbuild/linux-loong64": "0.21.5", "@esbuild/linux-mips64el": "0.21.5", "@esbuild/linux-ppc64": "0.21.5", "@esbuild/linux-riscv64": "0.21.5", "@esbuild/linux-s390x": "0.21.5", "@esbuild/linux-x64": "0.21.5", "@esbuild/netbsd-x64": "0.21.5", "@esbuild/openbsd-x64": "0.21.5", "@esbuild/sunos-x64": "0.21.5", "@esbuild/win32-arm64": "0.21.5", "@esbuild/win32-ia32": "0.21.5", "@esbuild/win32-x64": "0.21.5" }, "bin": { "esbuild": "bin/esbuild" } }, "sha512-mg3OPMV4hXywwpoDxu3Qda5xCKQi+vCTZq8S9J/EpkhB2HzKXq4SNFZE3+NK93JYxc8VMSep+lOUSC/RVKaBqw=="],
 

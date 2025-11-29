@@ -179,6 +179,24 @@ export const LANGUAGE_REGISTRY: Record<string, LanguageConfig> = {
 	},
 
 	// ============================================
+	// Rust
+	// ============================================
+	rust: {
+		parser: '@sylphx/synth-rust',
+		extensions: ['.rs'],
+		boundaries: [
+			'function_item',
+			'impl_item',
+			'struct_item',
+			'enum_item',
+			'trait_item',
+			'mod_item',
+			'macro_definition',
+		],
+		contextTypes: ['use_declaration'],
+	},
+
+	// ============================================
 	// Markup Languages
 	// ============================================
 	markdown: {

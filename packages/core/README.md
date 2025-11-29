@@ -98,7 +98,11 @@ const chunks = await chunkCodeByAST(code, 'typescript', {
 // Returns: [{ content, type, startLine, endLine }, ...]
 ```
 
-Supported languages: JavaScript, TypeScript, HTML, JSON, YAML, Markdown
+**Supported languages (15+):**
+- **JavaScript**: JS, TS, JSX, TSX
+- **Systems**: Python, Go, Java, C, Rust
+- **Markup**: Markdown, HTML, XML
+- **Data/Config**: JSON, YAML, TOML, INI, Protobuf
 
 ### Vector Storage
 
@@ -147,4 +151,4 @@ MIT
 
 **Powered by [Sylphx](https://github.com/SylphxAI)**
 
-Built with [@sylphx/synth](https://github.com/SylphxAI/synth) · [@sylphx/synth-js](https://github.com/SylphxAI/synth-js) · [@sylphx/synth-html](https://github.com/SylphxAI/synth-html) · [@sylphx/synth-json](https://github.com/SylphxAI/synth-json) · [@sylphx/synth-yaml](https://github.com/SylphxAI/synth-yaml) · [@sylphx/synth-md](https://github.com/SylphxAI/synth-md)
+Built with [@sylphx/synth](https://github.com/SylphxAI/synth) parsers (15+ languages)

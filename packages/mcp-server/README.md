@@ -224,22 +224,20 @@ Search project source files with TF-IDF ranking.
 
 ### Response
 
+LLM-optimized output (minimal tokens, maximum content):
+
 ```markdown
-# 🔍 Codebase Search Results
+# Search: "authentication" (3 results)
 
-**Query:** "authentication"
-**Results:** 3 / 500 files
-
-## 1. `src/auth/login.ts`
-
-- **Score:** 0.87
-- **Language:** TypeScript
-- **Matched Terms:** authentication, login, user
-
-**Snippet:**
-```
+## src/auth/login.ts:15-28
+```typescript
 15: export async function authenticate(credentials) {
 16:   const user = await findUser(credentials.email)
+```
+
+## docs/auth.md:42-55 [markdown→typescript]
+```typescript
+42: // Embedded code from docs
 ```
 ```
 

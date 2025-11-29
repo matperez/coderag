@@ -60,6 +60,7 @@
 		"@sylphx/synth-md-gfm": "^0.2.3",
 		"@sylphx/synth-protobuf": "^0.2.1",
 		"@sylphx/synth-python": "^0.2.1",
+		"@sylphx/synth-rust": "^0.2.3",
 		"@sylphx/synth-toml": "^0.2.1",
 		"@sylphx/synth-xml": "^0.2.1",
 		"@sylphx/synth-yaml": "latest",
