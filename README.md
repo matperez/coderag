@@ -242,6 +242,15 @@ LLM-optimized output (minimal tokens, maximum content):
 42: // Embedded code from markdown docs
 43: const authMiddleware = (req, res, next) => {
 ```
+
+## src/utils/large.ts:1-200 [truncated]
+```typescript
+1: // First 70% shown...
+
+... [800 chars truncated] ...
+
+195: // Last 20% shown
+```
 ```
 
 ---

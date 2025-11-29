@@ -239,6 +239,15 @@ LLM-optimized output (minimal tokens, maximum content):
 ```typescript
 42: // Embedded code from docs
 ```
+
+## src/utils/large-file.ts:1-500 [truncated]
+```typescript
+1: // First 70% of content shown...
+
+... [1500 chars truncated] ...
+
+490: // Last 20% of content shown
+```
 ```
 
 ## Usage Tips

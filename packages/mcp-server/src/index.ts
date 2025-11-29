@@ -272,9 +272,9 @@ When to use:
 					startLine?: number
 					endLine?: number
 				}>) {
-					// Build file path with line range
+					// Build file path with line range (check !== undefined since 0 is valid)
 					let header = result.path
-					if (result.startLine && result.endLine) {
+					if (result.startLine !== undefined && result.endLine !== undefined) {
 						header += `:${result.startLine}-${result.endLine}`
 					}
 
@@ -292,6 +292,8 @@ When to use:
 					formattedResults += `## ${header}\n`
 
 					// Show content snippet
+					const maxSnippetLen = 2000 // Max chars for snippet display
+
 					if (result.snippet) {
 						// Determine language for syntax highlighting
 						let lang = ''
@@ -302,12 +304,40 @@ When to use:
 						} else {
 							lang = result.language?.toLowerCase() || ''
 						}
-						formattedResults += `\`\`\`${lang}\n${result.snippet}\n\`\`\`\n\n`
+
+						// Truncate long snippets with head+tail format
+						let snippetContent = result.snippet
+						if (snippetContent.length > maxSnippetLen) {
+							const headLen = Math.floor(maxSnippetLen * 0.7) // 70% head
+							const tailLen = Math.floor(maxSnippetLen * 0.2) // 20% tail
+							const head = snippetContent.substring(0, headLen)
+							const tail = snippetContent.substring(snippetContent.length - tailLen)
+							const truncatedChars = snippetContent.length - headLen - tailLen
+							snippetContent = `${head}\n\n... [${truncatedChars} chars truncated] ...\n\n${tail}`
+							// Add truncation indicator to header
+							formattedResults = `${formattedResults.trimEnd()} [truncated]\n`
+						}
+						formattedResults += `\`\`\`${lang}\n${snippetContent}\n\`\`\`\n\n`
 					} else if (result.content) {
-						const preview =
-							result.content.length > 500
-								? `${result.content.substring(0, 500)}...`
-								: result.content
+						// Truncate long content with head+tail format
+						const maxLen = 500
+						let preview: string
+						let isTruncated = false
+						if (result.content.length > maxLen) {
+							isTruncated = true
+							// Show first 350 chars + ... + last 100 chars
+							const headLen = 350
+							const tailLen = 100
+							const head = result.content.substring(0, headLen)
+							const tail = result.content.substring(result.content.length - tailLen)
+							preview = `${head}\n\n... [${result.content.length - headLen - tailLen} chars truncated] ...\n\n${tail}`
+						} else {
+							preview = result.content
+						}
+						// Add truncation indicator to header if needed
+						if (isTruncated) {
+							formattedResults = `${formattedResults.trimEnd()} [truncated]\n`
+						}
 						formattedResults += `\`\`\`\n${preview}\n\`\`\`\n\n`
 					}
 				}
