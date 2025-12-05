@@ -13,7 +13,7 @@ import {
 	semanticSearch,
 } from '@sylphx/coderag'
 import { createServer, stdio, text, tool } from '@sylphx/mcp-server-sdk'
-import { z } from 'zod'
+import { array, bool, description, num, object, optional, str } from '@sylphx/vex'
 
 // Logger utility (stderr for MCP)
 const Logger = {
@@ -123,48 +123,34 @@ When to use:
 	const codebaseSearch = tool()
 		.description(toolDescription)
 		.input(
-			z.object({
-				query: z.string().describe(queryDescription),
-				limit: z
-					.number()
-					.default(10)
-					.optional()
-					.describe('Maximum number of results to return (default: 10)'),
-				include_content: z
-					.boolean()
-					.default(true)
-					.optional()
-					.describe('Include file content snippets in results (default: true)'),
-				file_extensions: z
-					.array(z.string())
-					.optional()
-					.describe('Filter by file extensions (e.g., [".ts", ".tsx", ".js"])'),
-				path_filter: z
-					.string()
-					.optional()
-					.describe('Filter by path pattern (e.g., "src/components", "tests", "docs")'),
-				exclude_paths: z
-					.array(z.string())
-					.optional()
-					.describe(
-						'Exclude paths containing these patterns (e.g., ["node_modules", ".git", "dist"])'
-					),
+			object({
+				query: str(description(queryDescription)),
+				limit: optional(num(description('Maximum number of results to return (default: 10)'))),
+				include_content: optional(
+					bool(description('Include file content snippets in results (default: true)'))
+				),
+				file_extensions: optional(
+					array(str(), description('Filter by file extensions (e.g., [".ts", ".tsx", ".js"])'))
+				),
+				path_filter: optional(
+					str(description('Filter by path pattern (e.g., "src/components", "tests", "docs")'))
+				),
+				exclude_paths: optional(
+					array(
+						str(),
+						description(
+							'Exclude paths containing these patterns (e.g., ["node_modules", ".git", "dist"])'
+						)
+					)
+				),
 				// Snippet options
-				context_lines: z
-					.number()
-					.default(3)
-					.optional()
-					.describe('Lines of context around each matched line (default: 3)'),
-				max_snippet_chars: z
-					.number()
-					.default(2000)
-					.optional()
-					.describe('Maximum characters per file snippet (default: 2000)'),
-				max_snippet_blocks: z
-					.number()
-					.default(4)
-					.optional()
-					.describe('Maximum code blocks per file (default: 4)'),
+				context_lines: optional(
+					num(description('Lines of context around each matched line (default: 3)'))
+				),
+				max_snippet_chars: optional(
+					num(description('Maximum characters per file snippet (default: 2000)'))
+				),
+				max_snippet_blocks: optional(num(description('Maximum code blocks per file (default: 4)'))),
 			})
 		)
 		.handler(async ({ input }) => {
