@@ -438,7 +438,7 @@ export class CodebaseIndexer {
 			for (const metadata of scanFileMetadata(this.codebaseRoot, {
 				ignoreFilter,
 				codebaseRoot: this.codebaseRoot,
-				maxFileSize: options.maxFileSize,
+				maxFileSize: this.maxFileSize,
 			})) {
 				fileMetadataList.push(metadata)
 			}

@@ -1,9 +1,9 @@
 /**
- * Basic usage example of @sylphx/codebase-search
+ * Basic usage example of @sylphx/coderag
  * Run with: bun run examples/basic-usage.ts
  */
 
-import { CodebaseIndexer } from '@sylphx/codebase-search'
+import { CodebaseIndexer } from '@sylphx/coderag'
 
 async function main() {
 	console.log('🔍 Codebase Search Example\n')

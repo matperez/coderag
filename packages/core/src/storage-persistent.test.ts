@@ -173,7 +173,8 @@ describe('PersistentStorage', () => {
 		})
 
 		it('should not error when deleting non-existent file', async () => {
-			await expect(storage.deleteFile('nonexistent.ts')).resolves.not.toThrow()
+			// Should complete without throwing
+			await storage.deleteFile('nonexistent.ts')
 		})
 	})
 

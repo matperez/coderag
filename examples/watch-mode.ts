@@ -3,7 +3,7 @@
  * Run with: bun run examples/watch-mode.ts
  */
 
-import { CodebaseIndexer } from '@sylphx/codebase-search'
+import { CodebaseIndexer } from '@sylphx/coderag'
 
 async function main() {
 	console.log('🔍 Codebase Search - Watch Mode Example\n')
