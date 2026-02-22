@@ -1,6 +1,6 @@
 {
 	"name": "@matperez/coderag-mcp",
-	"version": "0.3.39",
+	"version": "0.3.40",
 	"description": "MCP server for CodeRAG - Model Context Protocol integration for RAG",
 	"type": "module",
 	"main": "./dist/index.js",
