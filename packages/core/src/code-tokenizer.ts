@@ -7,6 +7,17 @@
 
 import { AutoTokenizer } from '@huggingface/transformers'
 
+/**
+ * Simple word/identifier tokenizer fallback when StarCoder2 returns no tokens.
+ * Splits on non-alphanumeric and underscore, lowercases, keeps tokens with length > 1.
+ */
+function simpleWordTokenize(text: string): string[] {
+	return text
+		.split(/[^a-zA-Z0-9_]+/)
+		.filter((w) => w.length > 1)
+		.map((w) => w.toLowerCase())
+}
+
 export interface CodeToken {
 	readonly text: string
 	readonly id: number
@@ -69,35 +80,40 @@ export class CodeTokenizer {
 	}
 
 	/**
-	 * Tokenize code into terms for TF-IDF indexing
+	 * Tokenize code into terms for TF-IDF indexing.
+	 * Uses StarCoder2 when available; falls back to simple word-split when it returns no tokens
+	 * (e.g. for Go, proto, YAML) so search still works.
 	 */
 	async tokenize(code: string): Promise<string[]> {
-		if (!this.initialized) {
-			await this.initialize()
-		}
-
 		if (!code || code.trim().length === 0) {
 			return []
 		}
 
-		// Encode with StarCoder2
-		const encoded = await this.tokenizer(code)
-		const inputIds = encoded.input_ids.tolist()[0]
-
-		// Decode each token ID to get the actual tokens
-		const tokens: string[] = []
-		for (const id of inputIds) {
-			const token = await this.tokenizer.decode([id], {
-				skip_special_tokens: true,
-			})
-
-			const cleaned = token.trim().toLowerCase()
-			// Filter: keep tokens with length > 1 (skip single chars and empty)
-			if (cleaned.length > 1) {
-				tokens.push(cleaned)
+		let tokens: string[] = []
+		try {
+			if (!this.initialized) {
+				await this.initialize()
 			}
+			// Encode with StarCoder2
+			const encoded = await this.tokenizer(code)
+			const inputIds = encoded.input_ids.tolist()[0]
+			for (const id of inputIds) {
+				const token = await this.tokenizer.decode([id], {
+					skip_special_tokens: true,
+				})
+				const cleaned = token.trim().toLowerCase()
+				if (cleaned.length > 1) {
+					tokens.push(cleaned)
+				}
+			}
+		} catch (e) {
+			// StarCoder2 failed (e.g. OOM, unsupported input)
+			console.error('[tokenize] StarCoder2 failed, using fallback:', (e as Error).message)
 		}
-
+		// Fallback: simple word/identifier split when StarCoder2 returns no tokens (e.g. large chunk, env issue)
+		if (tokens.length === 0) {
+			tokens = simpleWordTokenize(code)
+		}
 		return tokens
 	}
 

@@ -17,8 +17,8 @@
       },
     },
     "packages/core": {
-      "name": "@sylphx/coderag",
-      "version": "0.1.24",
+      "name": "@matperez/coderag",
+      "version": "0.1.25",
       "dependencies": {
         "@ai-sdk/openai": "^1.0.11",
         "@huggingface/transformers": "^3.7.6",
@@ -41,13 +41,14 @@
       },
     },
     "packages/mcp-server": {
-      "name": "@sylphx/coderag-mcp",
-      "version": "0.3.33",
+      "name": "@matperez/coderag-mcp",
+      "version": "0.3.35",
       "bin": {
+        "coderag": "./dist/index.js",
         "coderag-mcp": "./dist/index.js",
       },
       "dependencies": {
-        "@sylphx/coderag": "workspace:*",
+        "@matperez/coderag": "^0.1.25",
         "@sylphx/mcp-server-sdk": "^2.1.0",
         "@sylphx/vex": "^0.1.11",
       },
@@ -301,6 +302,10 @@
 
     "@libsql/win32-x64-msvc": ["@libsql/win32-x64-msvc@0.4.7", "", { "os": "win32", "cpu": "x64" }, "sha512-7pJzOWzPm6oJUxml+PCDRzYQ4A1hTMHAciTAHfFK4fkbDZX33nWPVG7Y3vqdKtslcwAzwmrNDc6sXy2nwWnbiw=="],
 
+    "@matperez/coderag": ["@matperez/coderag@workspace:packages/core"],
+
+    "@matperez/coderag-mcp": ["@matperez/coderag-mcp@workspace:packages/mcp-server"],
+
     "@neon-rs/load": ["@neon-rs/load@0.0.4", "", {}, "sha512-kTPhdZyTQxB+2wpiRcFWrDcejc4JI6tkPuS7UZCG4l6Zvc5kU/gGQ/ozvHTh1XR5tS+UlfAfGuPajjzQjCiHCw=="],
 
     "@opentelemetry/api": ["@opentelemetry/api@1.9.0", "", {}, "sha512-3giAOQvZiH5F9bMlMiv8+GSPMeqg0dbaeo58/0SlA9sxSqZhnUtxzX9/2FzyhS9sWQf5S0GJE0AKBrFqjpeYcg=="],
@@ -420,10 +425,6 @@
     "@sylphx/biome-config": ["@sylphx/biome-config@0.4.0", "", { "peerDependencies": { "@biomejs/biome": "^2.0.0" } }, "sha512-fvIZ5H61VfbQzp2X2E5FoRtzUBS03rGvuaxby6MoP4fmgXaYS35CWgU+zswKoo2DAriBbIKfWkYsT/Bn2ih0HA=="],
 
     "@sylphx/bump": ["@sylphx/bump@1.1.1", "", { "dependencies": { "citty": "^0.1.6", "consola": "^3.4.2", "defu": "^6.1.4", "picocolors": "^1.1.1", "semver": "^7.6.3", "zx": "^8.8.5" }, "bin": { "bump": "dist/cli.js" } }, "sha512-K4rYv5QOuTI9fYpj0fJDuE/it+NBBQwbQ2q78mNHxpICx1TU85DTxUdLxNB5XGjW6MRKn4H3qpdDkkbW+L5crg=="],
-
-    "@sylphx/coderag": ["@sylphx/coderag@workspace:packages/core"],
-
-    "@sylphx/coderag-mcp": ["@sylphx/coderag-mcp@workspace:packages/mcp-server"],
 
     "@sylphx/doctor": ["@sylphx/doctor@1.23.3", "", { "dependencies": { "citty": "^0.1.6", "consola": "^3.4.2", "defu": "^6.1.4", "jiti": "^2.4.2", "picocolors": "^1.1.1" }, "bin": { "doctor": "dist/cli.js" } }, "sha512-bz9zzT9bS23nO82hCiQlQPxm9Fi5lqyTSFKci89/nyRSPUkG9JMwf85mJmhQsVbglj6RSeYSCFmTvKyiXSxdKw=="],
 
@@ -1025,7 +1026,7 @@
 
     "@esbuild-kit/core-utils/esbuild": ["esbuild@0.18.20", "", { "optionalDependencies": { "@esbuild/android-arm": "0.18.20", "@esbuild/android-arm64": "0.18.20", "@esbuild/android-x64": "0.18.20", "@esbuild/darwin-arm64": "0.18.20", "@esbuild/darwin-x64": "0.18.20", "@esbuild/freebsd-arm64": "0.18.20", "@esbuild/freebsd-x64": "0.18.20", "@esbuild/linux-arm": "0.18.20", "@esbuild/linux-arm64": "0.18.20", "@esbuild/linux-ia32": "0.18.20", "@esbuild/linux-loong64": "0.18.20", "@esbuild/linux-mips64el": "0.18.20", "@esbuild/linux-ppc64": "0.18.20", "@esbuild/linux-riscv64": "0.18.20", "@esbuild/linux-s390x": "0.18.20", "@esbuild/linux-x64": "0.18.20", "@esbuild/netbsd-x64": "0.18.20", "@esbuild/openbsd-x64": "0.18.20", "@esbuild/sunos-x64": "0.18.20", "@esbuild/win32-arm64": "0.18.20", "@esbuild/win32-ia32": "0.18.20", "@esbuild/win32-x64": "0.18.20" }, "bin": { "esbuild": "bin/esbuild" } }, "sha512-ceqxoedUrcayh7Y7ZX6NdbbDzGROiyVBgC4PriJThBKSVPWnnFHZAkfI1lJT8QFkOwH4qOS2SJkS4wvpGl8BpA=="],
 
-    "@sylphx/coderag/@sylphx/doctor": ["@sylphx/doctor@1.25.0", "", { "dependencies": { "citty": "^0.1.6", "consola": "^3.4.2", "defu": "^6.1.4", "jiti": "^2.4.2", "picocolors": "^1.1.1" }, "bin": { "doctor": "dist/cli.js" } }, "sha512-AhAhoDxTsWIB8KYViJ4ZKOoNJprtuzaUYswn364fspbAQbyga8wpr0GehdW838J0jpZkZTZ9nGJg2lJT+nUKbQ=="],
+    "@matperez/coderag/@sylphx/doctor": ["@sylphx/doctor@1.25.0", "", { "dependencies": { "citty": "^0.1.6", "consola": "^3.4.2", "defu": "^6.1.4", "jiti": "^2.4.2", "picocolors": "^1.1.1" }, "bin": { "doctor": "dist/cli.js" } }, "sha512-AhAhoDxTsWIB8KYViJ4ZKOoNJprtuzaUYswn364fspbAQbyga8wpr0GehdW838J0jpZkZTZ9nGJg2lJT+nUKbQ=="],
 
     "@vitest/mocker/estree-walker": ["estree-walker@3.0.3", "", { "dependencies": { "@types/estree": "^1.0.0" } }, "sha512-7RUKfXgSMMkzt6ZuXmqapOurLGPPfgj6l9uRZ7lRGolvk0y2yocc35LdcxKC5PQZdn2DMqioAQ2NoWcrTKmm6g=="],
 
