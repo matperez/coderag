@@ -101,7 +101,14 @@ export async function chunkCodeByAST(
 		return chunks.map(mapCodeChunkToResult)
 	} catch (error) {
 		// UnsupportedLanguageError, ChunkingError, or any other: fall back to character chunking
-		console.error('[WARN] AST chunking failed, falling back to character chunking:', error instanceof Error ? error.message : String(error))
+		const err = error instanceof Error ? error : new Error(String(error))
+		const causeMsg = err.cause instanceof Error ? ` (cause: ${err.cause.message})` : ''
+		console.error(
+			'[WARN] AST chunking failed, falling back to character chunking:',
+			filePath,
+			'-',
+			err.message + causeMsg
+		)
 		return createFallbackChunks(code, maxChunkSize)
 	}
 }
