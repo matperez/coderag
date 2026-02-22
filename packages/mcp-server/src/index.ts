@@ -198,19 +198,6 @@ When to use:
 					max_snippet_blocks = 4,
 				} = input
 
-				// Check indexing status
-				const status = indexer.getStatus()
-
-				if (status.isIndexing) {
-					const progressBar =
-						'█'.repeat(Math.floor(status.progress / 5)) +
-						'░'.repeat(20 - Math.floor(status.progress / 5))
-
-					return text(
-						`⏳ **Codebase Indexing In Progress**\n\nThe codebase is currently being indexed. Please wait...\n\n**Progress:** ${status.progress}%\n\`${progressBar}\`\n\n**Status:**\n- Chunks indexed: ${status.indexedChunks}${status.totalChunks ? `/${status.totalChunks}` : ''}\n- Files processed: ${status.processedFiles}/${status.totalFiles}\n${status.currentFile ? `- Current file: \`${status.currentFile}\`` : ''}\n\n💡 **Tip:** Try your search again in a few seconds.`
-					)
-				}
-
 				// Perform search (semantic if available, otherwise keyword)
 				let results: Array<{
 					path: string
@@ -265,17 +252,25 @@ When to use:
 					throw searchError
 				}
 
-				// Get indexed count for display
+				// Get indexed count and status for optional indexing-in-progress hint
 				const indexedCount = await indexer.getIndexedCount()
+				const status = indexer.getStatus()
 
 				if (results.length === 0) {
+					const indexingHint = status.isIndexing
+						? `\n\n*Indexing in progress (${status.progress}%). Results may expand as more files are indexed.*`
+						: ''
 					return text(
-						`# Search: "${query}" (0 results)\n\nNo matches found. Try different terms or check filters.\nIndexed files: ${indexedCount}`
+						`# Search: "${query}" (0 results)\n\nNo matches found. Try different terms or check filters.\nIndexed files: ${indexedCount}${indexingHint}`
 					)
 				}
 
 				// Format results - optimized for LLM consumption (minimal tokens, maximum content)
-				let formattedResults = `# Search: "${query}" (${results.length} results)\n\n`
+				const indexingHint =
+					status.isIndexing
+						? '*Indexing in progress — results are from the current partial index.*\n\n'
+						: ''
+				let formattedResults = `${indexingHint}# Search: "${query}" (${results.length} results)\n\n`
 
 				for (const result of results as Array<{
 					path: string
