@@ -12,12 +12,12 @@ describe('MCP Server', () => {
 
 	test('SERVER_CONFIG should have required fields', () => {
 		const SERVER_CONFIG = {
-			name: '@sylphx/coderag-mcp',
+			name: '@matperez/coderag-mcp',
 			version: '1.0.0',
 			description: 'MCP server providing intelligent codebase search using TF-IDF',
 		}
 
-		expect(SERVER_CONFIG.name).toBe('@sylphx/coderag-mcp')
+		expect(SERVER_CONFIG.name).toBe('@matperez/coderag-mcp')
 		expect(SERVER_CONFIG.version).toBeDefined()
 		expect(SERVER_CONFIG.description).toBeDefined()
 	})

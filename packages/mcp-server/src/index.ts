@@ -11,7 +11,7 @@ import {
 	type EmbeddingProvider,
 	PersistentStorage,
 	semanticSearch,
-} from '@sylphx/coderag'
+} from '@matperez/coderag'
 import { createServer, stdio, text, tool } from '@sylphx/mcp-server-sdk'
 import { array, bool, description, num, object, optional, str } from '@sylphx/vex'
 
@@ -28,7 +28,7 @@ const Logger = {
 }
 
 const SERVER_CONFIG = {
-	name: '@sylphx/coderag-mcp',
+	name: '@matperez/coderag-mcp',
 	version: '1.0.0',
 }
 
