@@ -21,6 +21,7 @@ export interface Storage {
 	count(): Promise<number>
 	getChunkCount?(): Promise<number> // Optional - for chunk-based storage
 	exists(path: string): Promise<boolean>
+	getFileHashes?(): Promise<Map<string, string>> // Optional - path -> hash for skip-unchanged
 }
 
 export class MemoryStorage implements Storage {
@@ -82,5 +83,16 @@ export class MemoryStorage implements Storage {
 	 */
 	async exists(path: string): Promise<boolean> {
 		return this.files.has(path)
+	}
+
+	/**
+	 * Get path -> hash for all files (for skip-unchanged during full index)
+	 */
+	async getFileHashes(): Promise<Map<string, string>> {
+		const map = new Map<string, string>()
+		for (const [path, file] of this.files) {
+			map.set(path, file.hash)
+		}
+		return map
 	}
 }

@@ -33,8 +33,10 @@ export interface StoredChunk extends ChunkData {
 export class PersistentStorage implements Storage {
 	private dbInstance!: DbInstance
 	private initPromise: Promise<void>
+	private useBulkInsertChunks: boolean
 
 	constructor(config: DbConfig = {}) {
+		this.useBulkInsertChunks = config.useBulkInsertChunks ?? true
 		this.initPromise = this.initialize(config)
 	}
 
@@ -174,6 +176,21 @@ export class PersistentStorage implements Storage {
 	}
 
 	/**
+	 * Get path -> hash for all files (for skip-unchanged during full index)
+	 */
+	async getFileHashes(): Promise<Map<string, string>> {
+		await this.ensureInit()
+		const { db } = this.dbInstance
+		const results = await db
+			.select({ path: schema.files.path, hash: schema.files.hash })
+			.from(schema.files)
+			.all()
+		const map = new Map<string, string>()
+		for (const row of results) map.set(row.path, row.hash)
+		return map
+	}
+
+	/**
 	 * Delete a file
 	 */
 	async deleteFile(path: string): Promise<void> {
@@ -284,33 +301,74 @@ export class PersistentStorage implements Storage {
 			)
 		}
 
-		// Insert new chunks
+		if (!this.useBulkInsertChunks) {
+			// Per-chunk insert (for benchmarking baseline)
+			type ChunkRow = typeof schema.chunks.$inferInsert
+			for (const fc of fileChunks) {
+				const fileId = fileIdMap.get(fc.filePath)
+				if (!fileId) continue
+				const ids: number[] = []
+				for (const chunk of fc.chunks) {
+					const insertResult = await db
+						.insert(schema.chunks)
+						.values({
+							fileId,
+							content: chunk.content,
+							type: chunk.type,
+							startLine: chunk.startLine,
+							endLine: chunk.endLine,
+							metadata: chunk.metadata ? JSON.stringify(chunk.metadata) : null,
+						} as ChunkRow)
+						.returning({ id: schema.chunks.id })
+					const row = Array.isArray(insertResult) ? insertResult[0] : insertResult
+					if (row?.id != null) ids.push(row.id)
+				}
+				result.set(fc.filePath, ids)
+			}
+			return result
+		}
+
+		// Bulk insert (SQLite ~999 bind limit, 6 fields/row → batch 150)
+		const CHUNK_INSERT_BATCH_SIZE = 150
+		type ChunkRow = typeof schema.chunks.$inferInsert
+		const flatRows: ChunkRow[] = []
+		const countsPerFile: number[] = []
 		for (const fc of fileChunks) {
 			const fileId = fileIdMap.get(fc.filePath)
-			if (!fileId) continue
-
-			const chunkIds: number[] = []
+			if (!fileId) {
+				countsPerFile.push(0)
+				continue
+			}
+			countsPerFile.push(fc.chunks.length)
 			for (const chunk of fc.chunks) {
-				const insertValues: Record<string, unknown> = {
+				flatRows.push({
 					fileId,
 					content: chunk.content,
 					type: chunk.type,
 					startLine: chunk.startLine,
 					endLine: chunk.endLine,
-				}
-				if (chunk.metadata) {
-					insertValues.metadata = JSON.stringify(chunk.metadata)
-				}
-				const insertResult = await db
-					.insert(schema.chunks)
-					.values(insertValues as typeof schema.chunks.$inferInsert)
-					.returning({ id: schema.chunks.id })
-
-				if (insertResult[0]) {
-					chunkIds.push(insertResult[0].id)
-				}
+					metadata: chunk.metadata ? JSON.stringify(chunk.metadata) : null,
+				} as ChunkRow)
 			}
-			result.set(fc.filePath, chunkIds)
+		}
+
+		const allIds: number[] = []
+		for (let i = 0; i < flatRows.length; i += CHUNK_INSERT_BATCH_SIZE) {
+			const batch = flatRows.slice(i, i + CHUNK_INSERT_BATCH_SIZE)
+			const insertResult = await db
+				.insert(schema.chunks)
+				.values(batch)
+				.returning({ id: schema.chunks.id })
+			const rows = Array.isArray(insertResult) ? insertResult : [insertResult]
+			for (const row of rows) if (row?.id != null) allIds.push(row.id)
+		}
+
+		let offset = 0
+		for (let i = 0; i < fileChunks.length; i++) {
+			const count = countsPerFile[i]
+			if (count === 0) continue
+			result.set(fileChunks[i].filePath, allIds.slice(offset, offset + count))
+			offset += count
 		}
 
 		return result

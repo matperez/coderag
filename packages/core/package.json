@@ -39,6 +39,7 @@
 		"test:watch": "vitest",
 		"type-check": "tsc --noEmit",
 		"clean": "rm -rf dist",
+		"bench:indexing": "bun run scripts/bench-indexing.ts",
 		"db:generate": "drizzle-kit generate",
 		"db:migrate": "drizzle-kit migrate",
 		"db:studio": "drizzle-kit studio"

@@ -13,6 +13,8 @@ import * as schema from './schema.js'
 export interface DbConfig {
 	dbPath?: string
 	codebaseRoot?: string
+	/** When false, storeManyChunks inserts one row per chunk (for benchmarking). Default true. */
+	useBulkInsertChunks?: boolean
 }
 
 export interface DbInstance {

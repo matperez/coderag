@@ -36,6 +36,10 @@ export interface IndexerOptions {
 	vectorBatchSize?: number // Default: 10
 	indexingBatchSize?: number // Default: 50 - files processed per batch (Memory optimization)
 	lowMemoryMode?: boolean // Default: true - use SQL-based search instead of in-memory index
+	/** Skip files whose hash matches existing (default true). Set false for benchmarking. */
+	skipUnchanged?: boolean
+	/** Tokenize chunk contents in parallel sub-batches (default true). Set false for benchmarking. */
+	useParallelTokenize?: boolean
 }
 
 export interface FileChangeEvent {
@@ -446,6 +450,18 @@ export class CodebaseIndexer {
 			this.status.totalFiles = fileMetadataList.length
 			console.error(`[INFO] Found ${fileMetadataList.length} files`)
 
+			// Sync deleted files when doing full rebuild (e.g. after interrupted first index)
+			if (this.storage instanceof PersistentStorage && (await this.storage.count()) > 0) {
+				const dbMetadata = await this.storage.getAllFileMetadata()
+				const dbPaths = Array.from(dbMetadata.keys())
+				const currentPaths = new Set(fileMetadataList.map((m) => m.path))
+				const deleted = dbPaths.filter((p) => !currentPaths.has(p))
+				if (deleted.length > 0) {
+					await (this.storage as PersistentStorage).deleteFiles(deleted)
+					console.error(`[INFO] Removed ${deleted.length} deleted files from index (full rebuild).`)
+				}
+			}
+
 			// Phase 2: Process files in batches with chunk-level indexing
 			// Only batch content is in memory at any time
 			console.error(`[INFO] Processing files in batches of ${this.indexingBatchSize}...`)
@@ -463,6 +479,11 @@ export class CodebaseIndexer {
 				this.incrementalEngine = new IncrementalTFIDF()
 			}
 
+			const existingHashes =
+				options.skipUnchanged !== false && this.storage.getFileHashes
+					? await this.storage.getFileHashes()
+					: new Map<string, string>()
+
 			for (let i = 0; i < fileMetadataList.length; i += batchSize) {
 				const batchMetadata = fileMetadataList.slice(i, i + batchSize)
 				const batchFiles: CodebaseFile[] = []
@@ -474,13 +495,23 @@ export class CodebaseIndexer {
 					const content = readFileContent(metadata.absolutePath)
 					if (content === null) continue
 
+					const hash = simpleHash(content)
+					if (existingHashes.get(metadata.path) === hash) {
+						processedCount++
+						this.status.currentFile = metadata.path
+						this.status.processedFiles = processedCount
+						this.status.progress = Math.round((processedCount / fileMetadataList.length) * 40)
+						options.onProgress?.(processedCount, fileMetadataList.length, metadata.path)
+						continue
+					}
+
 					const codebaseFile: CodebaseFile = {
 						path: metadata.path,
 						content,
 						size: metadata.size,
 						mtime: new Date(metadata.mtime),
 						language: metadata.language,
-						hash: simpleHash(content),
+						hash,
 					}
 					batchFiles.push(codebaseFile)
 
@@ -529,47 +560,59 @@ export class CodebaseIndexer {
 							fileChunks.map((fc) => ({ filePath: fc.filePath, chunks: fc.chunks }))
 						)
 
-						// Build TF-IDF vectors for chunks
+						// Build flat list of tokenize tasks (same order as chunks)
+						const tokenTasks: Array<{ chunkId: number; content: string }> = []
+						for (const fc of fileChunks) {
+							const chunkIds = chunkIdMap.get(fc.filePath)
+							if (!chunkIds) continue
+							for (let j = 0; j < fc.chunks.length; j++) {
+								const chunkId = chunkIds[j]
+								if (chunkId) tokenTasks.push({ chunkId, content: fc.chunks[j].content })
+							}
+						}
+
+						const allTokenResults: string[][] = []
+						if (options.useParallelTokenize === false) {
+							// Sequential tokenize (for benchmarking)
+							for (const t of tokenTasks) {
+								allTokenResults.push(await tokenize(t.content))
+							}
+						} else {
+							// Tokenize in parallel (sub-batches to avoid too many concurrent)
+							const TOKENIZE_CONCURRENCY = 25
+							for (let i = 0; i < tokenTasks.length; i += TOKENIZE_CONCURRENCY) {
+								const batch = tokenTasks.slice(i, i + TOKENIZE_CONCURRENCY)
+								const batchResults = await Promise.all(batch.map((t) => tokenize(t.content)))
+								allTokenResults.push(...batchResults)
+							}
+						}
+
+						// Build chunkVectors from results (same order)
 						const chunkVectors: Array<{
 							chunkId: number
 							terms: Map<string, { tf: number; tfidf: number; rawFreq: number }>
 							tokenCount: number
 						}> = []
-
-						for (const fc of fileChunks) {
-							const chunkIds = chunkIdMap.get(fc.filePath)
-							if (!chunkIds) continue
-
-							for (let j = 0; j < fc.chunks.length; j++) {
-								const chunk = fc.chunks[j]
-								const chunkId = chunkIds[j]
-								if (!chunkId) continue
-
-								// Tokenize chunk content
-								const tokens = await tokenize(chunk.content)
-								const termFreq = new Map<string, number>()
-								for (const token of tokens) {
-									termFreq.set(token, (termFreq.get(token) || 0) + 1)
-								}
-
-								// Calculate TF
-								const totalTerms = tokens.length
-								if (totalTerms === 0) continue
-
-								const terms = new Map<string, { tf: number; tfidf: number; rawFreq: number }>()
-								for (const [term, freq] of termFreq) {
-									terms.set(term, {
-										tf: freq / totalTerms,
-										tfidf: 0, // Will be calculated after IDF rebuild
-										rawFreq: freq,
-									})
-								}
-
-								chunkVectors.push({ chunkId, terms, tokenCount: totalTerms })
+						for (let k = 0; k < tokenTasks.length; k++) {
+							const tokens = allTokenResults[k]
+							const chunkId = tokenTasks[k].chunkId
+							const termFreq = new Map<string, number>()
+							for (const token of tokens) {
+								termFreq.set(token, (termFreq.get(token) || 0) + 1)
 							}
+							const totalTerms = tokens.length
+							if (totalTerms === 0) continue
+							const terms = new Map<string, { tf: number; tfidf: number; rawFreq: number }>()
+							for (const [term, freq] of termFreq) {
+								terms.set(term, {
+									tf: freq / totalTerms,
+									tfidf: 0,
+									rawFreq: freq,
+								})
+							}
+							chunkVectors.push({ chunkId, terms, tokenCount: totalTerms })
 						}
 
-						// Store chunk vectors
 						if (chunkVectors.length > 0) {
 							await persistentStorage.storeManyChunkVectors(chunkVectors)
 						}
