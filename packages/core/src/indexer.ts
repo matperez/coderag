@@ -38,7 +38,7 @@ export interface IndexerOptions {
 	lowMemoryMode?: boolean // Default: true - use SQL-based search instead of in-memory index
 	/** Skip files whose hash matches existing (default true). Set false for benchmarking. */
 	skipUnchanged?: boolean
-	/** Tokenize chunk contents in parallel sub-batches (default true). Set false for benchmarking. */
+	/** Tokenize chunk contents in parallel sub-batches (default false). Set true to enable. */
 	useParallelTokenize?: boolean
 }
 
@@ -572,18 +572,18 @@ export class CodebaseIndexer {
 						}
 
 						const allTokenResults: string[][] = []
-						if (options.useParallelTokenize === false) {
-							// Sequential tokenize (for benchmarking)
-							for (const t of tokenTasks) {
-								allTokenResults.push(await tokenize(t.content))
-							}
-						} else {
+						if (options.useParallelTokenize === true) {
 							// Tokenize in parallel (sub-batches to avoid too many concurrent)
 							const TOKENIZE_CONCURRENCY = 25
 							for (let i = 0; i < tokenTasks.length; i += TOKENIZE_CONCURRENCY) {
 								const batch = tokenTasks.slice(i, i + TOKENIZE_CONCURRENCY)
 								const batchResults = await Promise.all(batch.map((t) => tokenize(t.content)))
 								allTokenResults.push(...batchResults)
+							}
+						} else {
+							// Sequential tokenize (default)
+							for (const t of tokenTasks) {
+								allTokenResults.push(await tokenize(t.content))
 							}
 						}
 

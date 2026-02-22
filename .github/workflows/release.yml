@@ -1,10 +1,18 @@
+# Release: runs build and test on version tags. Add npm/bun publish steps when needed.
 name: Release
 
 on:
   push:
-    branches: [main]
+    tags: ["v*"]
 
 jobs:
-  release:
-    uses: SylphxAI/.github/.github/workflows/release.yml@main
-    secrets: inherit
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+      - run: bun install
+      - run: bun run build
+      - run: bun run test

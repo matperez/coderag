@@ -21,14 +21,18 @@ jobs:
       - name: Install dependencies
         run: bun install
 
+      - name: Build packages
+        run: bun run build
+
       - name: Type check
         run: bun run type-check
 
       - name: Run tests
         run: bun run test
 
-      - name: Build packages
-        run: bun run build
+      - name: Generate coverage (core)
+        run: cd packages/core && bun run test -- --coverage
+        continue-on-error: true
 
       - name: Upload coverage
         uses: codecov/codecov-action@v4

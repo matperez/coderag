@@ -17,6 +17,14 @@
 
 ---
 
+## About this project
+
+This project is based on **[SylphxAI/coderag](https://github.com/SylphxAI/coderag)** with a parser replacement: [code-chunk](https://github.com/supermemoryai/code-chunk) (tree-sitter) is used for AST chunking instead of Synth.
+
+**Why code-chunk:** The original CodeRAG relies on Synth and multiple `@sylphx/synth-*` packages (one per language), which adds dependency and build overhead. We switched to code-chunk for a single dependency, tree-sitter–based parsing, and simpler packaging: no per-language parser packages or dist/ layout to maintain. AST support covers TypeScript, JavaScript, Python, Rust, Go, and Java; other formats use character fallback.
+
+---
+
 ## Why CodeRAG?
 
 Traditional code search tools are either **slow** (full-text grep), **inaccurate** (keyword matching), or **complex** (require external services).
@@ -55,7 +63,7 @@ CodeRAG is different:
 ### Integration
 - 📦 **MCP Server** - Works with Claude Desktop, Cursor, VS Code, Windsurf
 - 🧠 **Vector Search** - Optional OpenAI embeddings for semantic search
-- 🌳 **AST Chunking** - Smart code splitting using [Synth](https://github.com/SylphxAI/synth) parsers (15+ languages)
+- 🌳 **AST Chunking** - Smart code splitting via [code-chunk](https://github.com/supermemoryai/code-chunk) (tree-sitter): TypeScript, JavaScript, Python, Rust, Go, Java; other formats use character fallback
 - 💻 **Low Memory Mode** - SQL-based search for resource-constrained environments
 
 ---
@@ -392,8 +400,8 @@ coderag/
 │   │   │   ├── storage-persistent.ts # SQLite storage
 │   │   │   ├── vector-storage.ts    # LanceDB vector storage
 │   │   │   ├── embeddings.ts        # OpenAI embeddings
-│   │   │   ├── ast-chunking.ts      # Synth AST chunking
-│   │   │   └── language-config.ts   # Language registry (15+ languages)
+│   │   │   ├── ast-chunking.ts      # code-chunk AST chunking + fallback
+│   │   │   └── language-config.ts   # Extension → language mapping
 │   │   └── package.json
 │   │
 │   └── mcp-server/               # @sylphx/coderag-mcp
@@ -412,40 +420,35 @@ coderag/
 
 ### Supported Languages
 
-AST-based chunking with semantic boundary detection:
-
-| Category | Languages |
-|----------|-----------|
-| **JavaScript** | JavaScript, TypeScript, JSX, TSX |
-| **Systems** | Python, Go, Java, C |
-| **Markup** | Markdown, HTML, XML |
-| **Data/Config** | JSON, YAML, TOML, INI |
-| **Other** | Protobuf |
-
-**Embedded Code Support**: Automatically parses code blocks in Markdown and `<script>`/`<style>` tags in HTML.
+**AST chunking** (code-chunk / tree-sitter): TypeScript, JavaScript, Python, Rust, Go, Java.  
+Other extensions (.md, .yaml, .json, .html, etc.) use **character fallback** (size-based splitting without semantics).
 
 ---
 
 ## 🔧 Development
 
+Build the entire project from the repo root:
+
 ```bash
-# Clone
+# Clone and install
 git clone https://github.com/SylphxAI/coderag.git
 cd coderag
-
-# Install
 bun install
 
-# Build
+# Build all packages (core → mcp-server)
 bun run build
 
-# Test
+# Run tests
 bun run test
-
-# Lint & Format
-bun run lint
-bun run format
 ```
+
+Single command for install + build + test:
+
+```bash
+bun install && bun run build && bun run test
+```
+
+Also: `bun run lint`, `bun run format`.
 
 ---
 
@@ -470,6 +473,6 @@ MIT © [Sylphx](https://sylphx.com)
 
 **Powered by [Sylphx](https://github.com/SylphxAI)**
 
-Built with [@sylphx/synth](https://github.com/SylphxAI/synth) • [@sylphx/mcp-server-sdk](https://github.com/SylphxAI/mcp-server-sdk) • [@sylphx/doctor](https://github.com/SylphxAI/doctor) • [@sylphx/bump](https://github.com/SylphxAI/bump)
+Built with [code-chunk](https://github.com/supermemoryai/code-chunk) • [@sylphx/mcp-server-sdk](https://github.com/SylphxAI/mcp-server-sdk) • [@sylphx/doctor](https://github.com/SylphxAI/doctor) • [@sylphx/bump](https://github.com/SylphxAI/bump)
 
 </div>

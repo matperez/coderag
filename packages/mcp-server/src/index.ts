@@ -46,6 +46,7 @@ async function main() {
 		10
 	) // 1MB default
 	const autoIndex = !args.includes('--no-auto-index')
+	const indexOnly = args.includes('--index-only')
 
 	Logger.info(`📂 Codebase root: ${codebaseRoot}`)
 	Logger.info(`📏 Max file size: ${(maxFileSize / 1024 / 1024).toFixed(2)} MB`)
@@ -90,6 +91,30 @@ async function main() {
 
 	// Use local reference for all operations
 	const indexer = localIndexer
+
+	// --index-only: run indexing once and exit (no MCP server)
+	if (indexOnly) {
+		Logger.info('📚 Indexing once (--index-only)...')
+		try {
+			await indexer.index({
+				watch: false,
+				onProgress: (current, total, file) => {
+					if (current % 50 === 0 || current === total) {
+						const pct = total ? Math.round((current / total) * 100) : 0
+						Logger.info(`Indexing: ${current}/${total} (${pct}%) - ${file}`)
+					}
+				},
+			})
+			const count = await indexer.getIndexedCount()
+			await indexer.close()
+			Logger.success(`✓ Indexed ${count} files. Done.`)
+			process.exit(0)
+		} catch (error) {
+			Logger.error('Indexing failed:', (error as Error).message)
+			await indexer.close().catch(() => {})
+			process.exit(1)
+		}
+	}
 
 	// Track indexing state for search handler
 	let indexingPending = autoIndex // Will be set to false once indexing completes or fails

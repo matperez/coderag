@@ -36,7 +36,7 @@ export class PersistentStorage implements Storage {
 	private useBulkInsertChunks: boolean
 
 	constructor(config: DbConfig = {}) {
-		this.useBulkInsertChunks = config.useBulkInsertChunks ?? true
+		this.useBulkInsertChunks = config.useBulkInsertChunks ?? false
 		this.initPromise = this.initialize(config)
 	}
 

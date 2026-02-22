@@ -8,6 +8,8 @@
 	],
 	"scripts": {
 		"build": "turbo run build",
+		"full-build": "bun install && turbo run build && turbo run test",
+		"coderag": "node packages/mcp-server/dist/index.js",
 		"dev": "turbo run dev",
 		"test": "turbo run test",
 		"clean": "turbo run clean",
