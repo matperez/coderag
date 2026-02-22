@@ -1,5 +1,5 @@
 {
-	"name": "@sylphx/coderag",
+	"name": "@matperez/coderag",
 	"version": "0.1.24",
 	"description": "Semantic code search with vector embeddings - RAG-ready for AI assistants",
 	"type": "module",
@@ -79,7 +79,7 @@
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/SylphxAI/coderag.git",
+		"url": "https://github.com/matperez/coderag.git",
 		"directory": "packages/core"
 	}
 }

@@ -10,6 +10,9 @@
 		"build": "turbo run build",
 		"full-build": "bun install && turbo run build && turbo run test",
 		"coderag": "node packages/mcp-server/dist/index.js",
+		"publish:core": "cd packages/core && npm publish --access public",
+		"publish:mcp": "cd packages/mcp-server && npm publish --access public",
+		"publish:all": "bun run build && bun run publish:core && bun run publish:mcp",
 		"dev": "turbo run dev",
 		"test": "turbo run test",
 		"clean": "turbo run clean",
@@ -58,7 +61,7 @@
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/SylphxAI/coderag.git"
+		"url": "https://github.com/matperez/coderag.git"
 	},
 	"type": "module"
 }
