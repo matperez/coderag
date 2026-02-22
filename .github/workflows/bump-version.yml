@@ -1,0 +1,44 @@
+# On merge to main: bump patch version in both published packages and push.
+# Commit message includes [skip ci] to avoid re-triggering. Then you can publish to npm.
+name: Bump version on merge
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    # Skip when this workflow already made the commit (avoid loop)
+    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') && !contains(github.event.head_commit.message, 'bump versions') }}
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node (for npm version)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Bump core patch
+        run: cd packages/core && npm version patch --no-git-tag-version
+
+      - name: Bump MCP patch
+        run: cd packages/mcp-server && npm version patch --no-git-tag-version
+
+      - name: Check for changes and push
+        run: |
+          git diff --quiet packages/core/package.json packages/mcp-server/package.json && echo "No version changes" && exit 0
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add packages/core/package.json packages/mcp-server/package.json
+          CORE_VER=$(node -p "require('./packages/core/package.json').version")
+          MCP_VER=$(node -p "require('./packages/mcp-server/package.json').version")
+          git commit -m "chore(release): bump versions @matperez/coderag@$CORE_VER @matperez/coderag-mcp@$MCP_VER [skip ci]"
+          git push
