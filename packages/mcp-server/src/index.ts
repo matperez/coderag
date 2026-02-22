@@ -360,6 +360,22 @@ When to use:
 			}
 		})
 
+	// Tool for UI (e.g. status bar): returns current indexing status as JSON. Safe to poll on a timer.
+	const getIndexingStatus = tool()
+		.description(
+			'Returns current codebase indexing status for UI (e.g. status bar). Poll periodically to show progress. Response is JSON: isIndexing, progress, totalFiles, processedFiles, totalChunks, indexedChunks, currentFile; when not indexing, includes indexedCount.'
+		)
+		.input(object({}))
+		.handler(async () => {
+			const status = indexer.getStatus()
+			const payload: Record<string, unknown> = { ...status }
+			if (!status.isIndexing) {
+				const indexedCount = await indexer.getIndexedCount()
+				payload.indexedCount = indexedCount
+			}
+			return text(JSON.stringify(payload))
+		})
+
 	// Create MCP server with the new SDK
 	const serverDescription = isSemanticSearch
 		? 'MCP server providing semantic code search using AI embeddings'
@@ -371,12 +387,13 @@ When to use:
 		instructions: serverDescription,
 		tools: {
 			codebase_search: codebaseSearch,
+			get_indexing_status: getIndexingStatus,
 		},
 		transport: stdio(),
 	})
 
 	Logger.info(
-		`✓ Registered codebase_search tool (${isSemanticSearch ? 'semantic' : 'keyword'} mode)`
+		`✓ Registered codebase_search and get_indexing_status tools (${isSemanticSearch ? 'semantic' : 'keyword'} mode)`
 	)
 
 	// Start indexing BEFORE server.start() since server.start() blocks waiting for client
