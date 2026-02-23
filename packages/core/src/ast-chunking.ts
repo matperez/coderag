@@ -141,14 +141,17 @@ function ensureWorker(): Worker {
 		// @ts-expect-error type: 'module' supported in Node 18+
 		type: 'module',
 	})
-	workerInstance.on('message', (msg: { type: string; id: string; chunks?: unknown[]; message?: string }) => {
+	workerInstance.on('message', (msg: { type: string; id: string; chunks?: unknown[]; message?: string; cause?: string; stack?: string }) => {
 		const entry = msg.id ? workerPending.get(msg.id) : undefined
 		if (!entry) return
 		workerPending.delete(msg.id)
 		if (msg.type === 'done' && Array.isArray(msg.chunks)) {
 			entry.resolve(msg.chunks.map(mapSerializedToResult))
 		} else {
-			entry.reject(new Error(msg.message ?? 'Chunk worker error'))
+			const e = new Error(msg.message ?? 'Chunk worker error')
+			if (msg.cause) (e as Error & { cause?: Error }).cause = new Error(msg.cause)
+			if (msg.stack) e.stack = msg.stack
+			entry.reject(e)
 		}
 	})
 	workerInstance.on('error', (err) => {
@@ -174,6 +177,42 @@ function chunkViaWorker(filePath: string, code: string, maxChunkSize: number): P
 	})
 }
 
+/** Whether this is an "unsupported file type" (expected fallback); log short line only. */
+function isUnsupportedFileTypeError(error: unknown): boolean {
+	const err = error instanceof Error ? error : null
+	if (!err) return false
+	const msg = (err.message ?? '').toLowerCase()
+	const causeMsg =
+		err.cause instanceof Error ? (err.cause.message ?? '').toLowerCase() : ''
+	return (
+		err.name === 'UnsupportedLanguageError' ||
+		msg.includes('unsupported file type') ||
+		msg.includes('unsupported language') ||
+		causeMsg.includes('unsupported file type') ||
+		causeMsg.includes('unsupported language')
+	)
+}
+
+/** Format full error details for debugging parser degradation (same file parses after restart). */
+function formatChunkErrorDetails(filePath: string, error: unknown): void {
+	const err = error instanceof Error ? error : new Error(String(error))
+	const short = `[WARN] AST chunking failed, falling back to character chunking: ${filePath}`
+	if (isUnsupportedFileTypeError(error)) {
+		console.error(short)
+		return
+	}
+	const lines: string[] = [short, `  message: ${err.name}: ${err.message}`]
+	if (err.cause !== undefined && err.cause !== null) {
+		const c = err.cause instanceof Error ? err.cause : new Error(String(err.cause))
+		lines.push(`  cause: ${c.name}: ${c.message}`)
+		if (c.stack) lines.push(`  cause stack: ${c.stack.split('\n').slice(0, 5).join('\n            ')}`)
+	}
+	if (err.stack) {
+		lines.push(`  stack: ${err.stack.split('\n').slice(0, 6).join('\n         ')}`)
+	}
+	console.error(lines.join('\n'))
+}
+
 /**
  * Chunk code using AST analysis (via code-chunk / tree-sitter)
  *
@@ -195,11 +234,7 @@ export async function chunkCodeByAST(
 			}
 			return chunks
 		} catch (error) {
-			const err = error instanceof Error ? error : new Error(String(error))
-			const causeMsg = err.cause instanceof Error ? ` (cause: ${err.cause.message})` : ''
-			console.error(
-				`[WARN] AST chunking failed, falling back to character chunking: ${filePath} — ${err.message}${causeMsg}`
-			)
+			formatChunkErrorDetails(filePath, error)
 			return createFallbackChunks(code, maxChunkSize)
 		}
 	}
@@ -214,12 +249,7 @@ export async function chunkCodeByAST(
 		}
 		return chunks.map(mapCodeChunkToResult)
 	} catch (error) {
-		// UnsupportedLanguageError, ChunkingError, or any other: fall back to character chunking
-		const err = error instanceof Error ? error : new Error(String(error))
-		const causeMsg = err.cause instanceof Error ? ` (cause: ${err.cause.message})` : ''
-		console.error(
-			`[WARN] AST chunking failed, falling back to character chunking: ${filePath} — ${err.message}${causeMsg}`
-		)
+		formatChunkErrorDetails(filePath, error)
 		return createFallbackChunks(code, maxChunkSize)
 	}
 }

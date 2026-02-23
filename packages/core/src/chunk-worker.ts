@@ -3,7 +3,7 @@
  * terminate and respawn it periodically to avoid web-tree-sitter memory growth.
  *
  * Message in:  { type: 'chunk', id: string, filePath: string, code: string, maxChunkSize?: number }
- * Message out: { type: 'done', id: string, chunks: SerializedChunk[] } | { type: 'error', id: string, message: string }
+ * Message out: { type: 'done', id: string, chunks: SerializedChunk[] } | { type: 'error', id: string, message: string, cause?: string, stack?: string }
  */
 
 import { parentPort } from 'worker_threads'
@@ -40,6 +40,8 @@ parentPort?.on('message', async (msg: { type: string; id: string; filePath: stri
 		parentPort?.postMessage({ type: 'done', id: msg.id, chunks: serialized })
 	} catch (err) {
 		const message = err instanceof Error ? err.message : String(err)
-		parentPort?.postMessage({ type: 'error', id: msg.id, message })
+		const cause = err instanceof Error && err.cause instanceof Error ? err.cause.message : undefined
+		const stack = err instanceof Error ? err.stack : undefined
+		parentPort?.postMessage({ type: 'error', id: msg.id, message, cause, stack })
 	}
 })
