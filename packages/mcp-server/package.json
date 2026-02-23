@@ -1,6 +1,6 @@
 {
 	"name": "@matperez/coderag-mcp",
-	"version": "0.3.41",
+	"version": "0.3.42",
 	"description": "MCP server for CodeRAG - Model Context Protocol integration for RAG",
 	"type": "module",
 	"main": "./dist/index.js",
@@ -27,7 +27,7 @@
 		"clean": "rm -rf dist"
 	},
 	"dependencies": {
-		"@matperez/coderag": "^0.1.30",
+		"@matperez/coderag": "^0.1.31",
 		"@sylphx/mcp-server-sdk": "^2.1.0",
 		"@sylphx/vex": "^0.1.11"
 	},
