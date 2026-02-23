@@ -5,7 +5,7 @@
 
 import fs from 'node:fs/promises'
 import path from 'node:path'
-import { chunkCodeByAST } from './ast-chunking.js'
+import { chunkCodeByAST, setChunkWorkerEnabled } from './ast-chunking.js'
 import { getCoderagDataDir } from './db/client.js'
 import type { EmbeddingProvider } from './embeddings.js'
 import { IncrementalTFIDF, type IncrementalUpdate } from './incremental-tfidf.js'
@@ -362,6 +362,7 @@ export class CodebaseIndexer {
 		this.status.progress = 0
 		this.status.processedFiles = 0
 		this.status.indexedChunks = 0
+		setChunkWorkerEnabled(true)
 
 		try {
 			// Try to load existing index from persistent storage
@@ -696,6 +697,7 @@ export class CodebaseIndexer {
 		} finally {
 			this.status.isIndexing = false
 			this.status.currentFile = undefined
+			setChunkWorkerEnabled(false)
 		}
 	}
 

@@ -9,6 +9,7 @@ export {
 	chunkCodeByAST,
 	chunkCodeByASTSimple,
 	getSupportedLanguages,
+	setChunkWorkerEnabled,
 } from './ast-chunking.js'
 export { getCoderagDataDir, type ProjectMetadata } from './db/client.js'
 export {
