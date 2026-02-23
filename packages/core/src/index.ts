@@ -43,6 +43,7 @@ export {
 	CodebaseIndexer,
 	type FileChangeEvent,
 	type FileDiff,
+	IndexingAbortedError,
 	type IndexerOptions,
 	type IndexingStatus,
 	type SearchResult,

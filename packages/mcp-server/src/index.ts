@@ -9,6 +9,7 @@ import {
 	CodebaseIndexer,
 	createEmbeddingProvider,
 	type EmbeddingProvider,
+	IndexingAbortedError,
 	PersistentStorage,
 	semanticSearch,
 } from '@matperez/coderag'
@@ -94,10 +95,13 @@ async function main() {
 
 	// --index-only: run indexing once and exit (no MCP server)
 	if (indexOnly) {
-		Logger.info('📚 Indexing once (--index-only)...')
+		Logger.info('📚 Indexing once (--index-only). Press Ctrl+C to cancel.')
+		const abortController = new AbortController()
+		indexingAbortController = abortController
 		try {
-			await indexer.index({
+			indexingPromise = indexer.index({
 				watch: false,
+				abortSignal: abortController.signal,
 				onProgress: (current, total, file) => {
 					if (current % 50 === 0 || current === total) {
 						const pct = total ? Math.round((current / total) * 100) : 0
@@ -105,14 +109,22 @@ async function main() {
 					}
 				},
 			})
+			await indexingPromise
 			const count = await indexer.getIndexedCount()
 			await indexer.close()
 			Logger.success(`✓ Indexed ${count} files. Done.`)
 			process.exit(0)
 		} catch (error) {
-			Logger.error('Indexing failed:', (error as Error).message)
+			if (error instanceof IndexingAbortedError) {
+				Logger.info('Indexing cancelled.')
+			} else {
+				Logger.error('Indexing failed:', (error as Error).message)
+			}
 			await indexer.close().catch(() => {})
-			process.exit(1)
+			process.exit(error instanceof IndexingAbortedError ? 0 : 1)
+		} finally {
+			indexingAbortController = null
+			indexingPromise = null
 		}
 	}
 
@@ -399,32 +411,41 @@ When to use:
 	// Start indexing BEFORE server.start() since server.start() blocks waiting for client
 	// This way indexing runs concurrently while waiting for MCP client to connect
 	if (autoIndex) {
-		Logger.info('📚 Starting automatic indexing...')
-		// Don't await - let it run in background
-		indexer
-			.index({
-				watch: true, // Enable file watching
-				onProgress: (current, total, file) => {
-					// Log every 10 files or at completion
-					if (current % 10 === 0 || current === total) {
-						const pct = Math.round((current / total) * 100)
-						Logger.info(`Indexing: ${current}/${total} (${pct}%) - ${file}`)
-					}
-				},
-				onFileChange: (event) => {
-					Logger.info(`File ${event.type}: ${event.path}`)
-				},
-			})
+		Logger.info('📚 Starting automatic indexing... (Ctrl+C to cancel)')
+		const abortController = new AbortController()
+		indexingAbortController = abortController
+		indexingPromise = indexer.index({
+			watch: true, // Enable file watching
+			abortSignal: abortController.signal,
+			onProgress: (current, total, file) => {
+				if (current % 10 === 0 || current === total) {
+					const pct = Math.round((current / total) * 100)
+					Logger.info(`Indexing: ${current}/${total} (${pct}%) - ${file}`)
+				}
+			},
+			onFileChange: (event) => {
+				Logger.info(`File ${event.type}: ${event.path}`)
+			},
+		})
+		indexingPromise
 			.then(async () => {
 				indexingPending = false
+				indexingAbortController = null
+				indexingPromise = null
 				Logger.success(`✓ Indexed ${await indexer.getIndexedCount()} files`)
 				Logger.info('👁️  Watching for file changes...')
 			})
 			.catch((error) => {
 				indexingPending = false
-				Logger.error('❌ Failed to index codebase:', (error as Error).message)
-				if ((error as Error).stack) {
-					Logger.error((error as Error).stack as string)
+				indexingAbortController = null
+				indexingPromise = null
+				if (error instanceof IndexingAbortedError) {
+					Logger.info('Indexing cancelled.')
+				} else {
+					Logger.error('❌ Failed to index codebase:', (error as Error).message)
+					if ((error as Error).stack) {
+						Logger.error((error as Error).stack as string)
+					}
 				}
 			})
 	}
@@ -443,6 +464,8 @@ When to use:
 
 // Handle process signals - ensure proper cleanup
 let indexer: CodebaseIndexer | null = null
+let indexingAbortController: AbortController | null = null
+let indexingPromise: Promise<void> | null = null
 
 function setupShutdownHandler(idx: CodebaseIndexer) {
 	indexer = idx
@@ -450,6 +473,12 @@ function setupShutdownHandler(idx: CodebaseIndexer) {
 
 async function gracefulShutdown(signal: string) {
 	Logger.info(`\n🛑 Received ${signal}, shutting down MCP server...`)
+	if (indexingAbortController) {
+		indexingAbortController.abort()
+	}
+	if (indexingPromise) {
+		await indexingPromise.catch(() => {})
+	}
 	if (indexer) {
 		try {
 			await indexer.close()

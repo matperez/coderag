@@ -40,6 +40,16 @@ export interface IndexerOptions {
 	skipUnchanged?: boolean
 	/** Tokenize chunk contents in parallel sub-batches (default false). Set true to enable. */
 	useParallelTokenize?: boolean
+	/** When aborted (e.g. Ctrl+C), indexing stops and throws IndexingAbortedError. */
+	abortSignal?: AbortSignal
+}
+
+/** Thrown when indexing is stopped via options.abortSignal (e.g. Ctrl+C). */
+export class IndexingAbortedError extends Error {
+	override readonly name = 'IndexingAbortedError'
+	constructor() {
+		super('Indexing was aborted')
+	}
 }
 
 export interface FileChangeEvent {
@@ -94,6 +104,13 @@ export class CodebaseIndexer {
 	private vectorBatchSize: number
 	private indexingBatchSize: number
 	private lowMemoryMode: boolean
+	private abortSignal?: AbortSignal
+
+	private throwIfAborted(): void {
+		if (this.abortSignal?.aborted) {
+			throw new IndexingAbortedError()
+		}
+	}
 
 	constructor(options: IndexerOptions = {}) {
 		this.codebaseRoot = options.codebaseRoot || process.cwd()
@@ -212,6 +229,7 @@ export class CodebaseIndexer {
 			let processedCount = 0
 
 			for (let i = 0; i < filesToProcess.length; i += batchSize) {
+				this.throwIfAborted()
 				const batchMetadata = filesToProcess.slice(i, i + batchSize)
 				const batchFiles: CodebaseFile[] = []
 				const fileChunks: Array<{ filePath: string; chunks: ChunkData[] }> = []
@@ -362,6 +380,7 @@ export class CodebaseIndexer {
 		this.status.progress = 0
 		this.status.processedFiles = 0
 		this.status.indexedChunks = 0
+		this.abortSignal = options.abortSignal
 		setChunkWorkerEnabled(true)
 
 		try {
@@ -486,6 +505,7 @@ export class CodebaseIndexer {
 					: new Map<string, string>()
 
 			for (let i = 0; i < fileMetadataList.length; i += batchSize) {
+				this.throwIfAborted()
 				const batchMetadata = fileMetadataList.slice(i, i + batchSize)
 				const batchFiles: CodebaseFile[] = []
 				const fileChunks: Array<{ filePath: string; chunks: ChunkData[]; content: string }> = []
@@ -697,6 +717,7 @@ export class CodebaseIndexer {
 		} finally {
 			this.status.isIndexing = false
 			this.status.currentFile = undefined
+			this.abortSignal = undefined
 			setChunkWorkerEnabled(false)
 		}
 	}
@@ -1041,6 +1062,7 @@ export class CodebaseIndexer {
 			// Re-chunk all files
 			const fileChunks: Array<{ filePath: string; chunks: ChunkData[] }> = []
 			for (const file of allFiles) {
+				this.throwIfAborted()
 				const chunks = await chunkCodeByAST(file.content, file.path)
 				const chunkData: ChunkData[] = chunks.map((chunk) => ({
 					content: chunk.content,
@@ -1561,6 +1583,7 @@ export class CodebaseIndexer {
 		}> = []
 
 		for (const metadata of files) {
+			this.throwIfAborted()
 			const content = readFileContent(metadata.absolutePath)
 			if (content === null) continue
 
@@ -1585,6 +1608,7 @@ export class CodebaseIndexer {
 		// Process chunks in batches
 		const batchSize = this.vectorBatchSize
 		for (let i = 0; i < allChunks.length; i += batchSize) {
+			this.throwIfAborted()
 			const batch = allChunks.slice(i, i + batchSize)
 
 			try {
