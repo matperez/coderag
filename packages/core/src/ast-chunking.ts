@@ -141,7 +141,7 @@ function ensureWorker(): Worker {
 		// @ts-expect-error type: 'module' supported in Node 18+
 		type: 'module',
 	})
-	workerInstance.on('message', (msg: { type: string; id: string; chunks?: unknown[]; message?: string; cause?: string; stack?: string }) => {
+	workerInstance.on('message', (msg: { type: string; id: string; chunks?: unknown[]; message?: string; cause?: string; causeStack?: string; stack?: string }) => {
 		const entry = msg.id ? workerPending.get(msg.id) : undefined
 		if (!entry) return
 		workerPending.delete(msg.id)
@@ -149,8 +149,12 @@ function ensureWorker(): Worker {
 			entry.resolve(msg.chunks.map(mapSerializedToResult))
 		} else {
 			const e = new Error(msg.message ?? 'Chunk worker error')
-			if (msg.cause) (e as Error & { cause?: Error }).cause = new Error(msg.cause)
 			if (msg.stack) e.stack = msg.stack
+			if (msg.cause) {
+				const causeErr = new Error(msg.cause)
+				if (msg.causeStack) causeErr.stack = msg.causeStack
+				;(e as Error & { cause?: Error }).cause = causeErr
+			}
 			entry.reject(e)
 		}
 	})

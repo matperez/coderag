@@ -108,6 +108,9 @@ async function main() {
 						Logger.info(`Indexing: ${current}/${total} (${pct}%) - ${file}`)
 					}
 				},
+				onPhaseProgress: (percent, message) => {
+					Logger.info(`TF-IDF: ${percent}% - ${message}`)
+				},
 			})
 			await indexingPromise
 			const count = await indexer.getIndexedCount()
@@ -419,9 +422,12 @@ When to use:
 			abortSignal: abortController.signal,
 			onProgress: (current, total, file) => {
 				if (current % 10 === 0 || current === total) {
-					const pct = Math.round((current / total) * 100)
+					const pct = total ? Math.round((current / total) * 100) : 0
 					Logger.info(`Indexing: ${current}/${total} (${pct}%) - ${file}`)
 				}
+			},
+			onPhaseProgress: (percent, message) => {
+				Logger.info(`TF-IDF: ${percent}% - ${message}`)
 			},
 			onFileChange: (event) => {
 				Logger.info(`File ${event.type}: ${event.path}`)

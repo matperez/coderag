@@ -42,6 +42,8 @@ export interface IndexerOptions {
 	useParallelTokenize?: boolean
 	/** When aborted (e.g. Ctrl+C), indexing stops and throws IndexingAbortedError. */
 	abortSignal?: AbortSignal
+	/** Called during TF-IDF phase (50–100%) with percent and short message. */
+	onPhaseProgress?: (percent: number, message: string) => void
 }
 
 /** Thrown when indexing is stopped via options.abortSignal (e.g. Ctrl+C). */
@@ -334,26 +336,31 @@ export class CodebaseIndexer {
 		}
 
 		this.status.progress = 50
+		options.onPhaseProgress?.(50, 'Rebuilding IDF scores...')
 
 		// Step 3: Rebuild IDF scores from vectors (SQL-based)
 		console.error('[INFO] Recalculating IDF scores...')
 		await persistentStorage.rebuildIdfScoresFromVectors()
 		this.status.progress = 70
+		options.onPhaseProgress?.(70, 'Recalculating TF-IDF scores...')
 
 		// Step 4: Recalculate TF-IDF scores (SQL-based batch update)
 		console.error('[INFO] Updating TF-IDF scores...')
 		await persistentStorage.recalculateTfidfScores()
 		this.status.progress = 80
+		options.onPhaseProgress?.(80, 'Updating chunk magnitudes...')
 
 		// Step 5: Update pre-computed magnitudes (for cosine similarity search)
 		console.error('[INFO] Updating chunk magnitudes...')
 		await persistentStorage.updateChunkMagnitudes()
 		this.status.progress = 90
+		options.onPhaseProgress?.(90, 'Updating average document length...')
 
 		// Step 6: Update average document length (for BM25)
 		console.error('[INFO] Updating average document length...')
 		await persistentStorage.updateAverageDocLength()
 		this.status.progress = 95
+		options.onPhaseProgress?.(95, 'Finalizing...')
 
 		// Step 7: Invalidate search cache
 		this.searchCache.invalidate()
@@ -654,6 +661,7 @@ export class CodebaseIndexer {
 			console.error(`[INFO] Total chunks created: ${totalChunks}`)
 			this.status.totalChunks = totalChunks
 			this.status.progress = 50
+			options.onPhaseProgress?.(50, 'Rebuilding IDF scores...')
 
 			// Finalize index based on storage type
 			if (persistentStorage) {
@@ -661,18 +669,22 @@ export class CodebaseIndexer {
 				console.error('[INFO] Rebuilding IDF scores...')
 				await persistentStorage.rebuildIdfScoresFromVectors()
 				this.status.progress = 60
+				options.onPhaseProgress?.(60, 'Recalculating TF-IDF scores...')
 
 				console.error('[INFO] Recalculating TF-IDF scores...')
 				await persistentStorage.recalculateTfidfScores()
 				this.status.progress = 70
+				options.onPhaseProgress?.(70, 'Computing chunk magnitudes...')
 
 				console.error('[INFO] Computing chunk magnitudes...')
 				await persistentStorage.updateChunkMagnitudes()
 				this.status.progress = 80
+				options.onPhaseProgress?.(80, 'Computing average document length...')
 
 				console.error('[INFO] Computing average document length...')
 				await persistentStorage.updateAverageDocLength()
 				this.status.progress = 85
+				options.onPhaseProgress?.(85, 'Finalizing...')
 
 				// Release in-memory structures in low memory mode
 				if (this.lowMemoryMode) {
@@ -704,6 +716,7 @@ export class CodebaseIndexer {
 			}
 
 			this.status.progress = 100
+			options.onPhaseProgress?.(100, 'Done')
 			this.status.indexedChunks = totalChunks
 			console.error(`[SUCCESS] Indexed ${totalChunks} chunks from ${fileMetadataList.length} files`)
 
