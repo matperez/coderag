@@ -1,6 +1,6 @@
 {
 	"name": "@matperez/coderag",
-	"version": "0.1.31",
+	"version": "0.1.32",
 	"description": "Semantic code search with vector embeddings - RAG-ready for AI assistants",
 	"type": "module",
 	"main": "./dist/index.js",
